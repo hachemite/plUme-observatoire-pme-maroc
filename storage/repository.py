@@ -16,10 +16,13 @@ STANDARD_COLUMNS = [
     "indicator_value",
     "raw_threat_tag",
     "tags",
+    "country_code",
     "status",
     "category",
     "severity",
+    "sector_hint",
 ]
+
 
 
 # Canonical deduplication subset key as per Data Integrity Policy
