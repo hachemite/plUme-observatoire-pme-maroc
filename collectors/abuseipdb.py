@@ -11,8 +11,9 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from processing.validate import validate_rows
-from processing.taxonomy import categorize
+from processing.taxonomy import categorize, severity
 from storage.repository import save_events, load_events
+
 
 # Load environment variables from .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,9 +89,11 @@ def run_pipeline() -> None:
 
     print("[AbuseIPDB] Categorizing threats with taxonomy...")
     categorized_df = categorize(validated_df)
+    enriched_df = severity(categorized_df)
 
     print("[AbuseIPDB] Saving events to storage repository...")
-    save_events(categorized_df)
+    save_events(enriched_df)
+
 
     saved_events = load_events()
     print(f"\n[AbuseIPDB Pipeline Completed]")

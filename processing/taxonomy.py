@@ -78,6 +78,55 @@ def categorize_text(text: str) -> str:
     return CAT_MALWARE
 
 
+def severity(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a `severity` column to the DataFrame based on abuseConfidenceScore in `tags`.
+    Buckets score into: 'high' (>=90), 'medium' (50-89), 'low' (<50).
+    Only applies to 'abuseipdb' rows; 'urlhaus' and other sources default to 'unknown'.
+
+    Args:
+        df: Input DataFrame containing threat data.
+
+    Returns:
+        pd.DataFrame: DataFrame with populated `severity` column.
+    """
+    if df.empty:
+        df = df.copy()
+        df["severity"] = []
+        return df
+
+    df = df.copy()
+    severities = []
+
+    for _, row in df.iterrows():
+        source_val = str(row.get("source", "")).strip().lower()
+        if source_val == "abuseipdb":
+            tags_val = str(row.get("tags", ""))
+            score = None
+            if "confidence_" in tags_val:
+                try:
+                    score_str = tags_val.split("confidence_")[-1].split()[0]
+                    score = int(score_str)
+                except (ValueError, IndexError):
+                    score = None
+
+            if score is not None:
+                if score >= 90:
+                    sev = "high"
+                elif score >= 50:
+                    sev = "medium"
+                else:
+                    sev = "low"
+            else:
+                sev = "unknown"
+        else:
+            sev = "unknown"
+
+        severities.append(sev)
+
+    df["severity"] = severities
+    return df
+
+
 def categorize(df: pd.DataFrame) -> pd.DataFrame:
     """Add a `category` column to the DataFrame using the keyword dictionary.
     Checks `tags` first, falling back to `raw_threat_tag`, then `indicator_value`,
@@ -142,8 +191,6 @@ def categorize(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-
-
 def classify_threat(threat_type: str = "", tags: str = "", url: str = "") -> str:
     """Legacy helper for classification."""
     return categorize_text(f"{threat_type} {tags} {url}")
@@ -151,4 +198,5 @@ def classify_threat(threat_type: str = "", tags: str = "", url: str = "") -> str
 
 def enrich_with_taxonomy(df: pd.DataFrame) -> pd.DataFrame:
     """Enrich DataFrame using taxonomy categorization."""
-    return categorize(df)
+    df_cat = categorize(df)
+    return severity(df_cat)

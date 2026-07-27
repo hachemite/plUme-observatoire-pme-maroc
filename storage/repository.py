@@ -18,7 +18,9 @@ STANDARD_COLUMNS = [
     "tags",
     "status",
     "category",
+    "severity",
 ]
+
 
 # Canonical deduplication subset key as per Data Integrity Policy
 DEDUP_COLUMNS = ["indicator_value", "source", "date_added"]
@@ -49,21 +51,22 @@ def save_events(df: pd.DataFrame) -> None:
     df = df[STANDARD_COLUMNS]
 
     if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
-        existing_df = pd.read_csv(DATA_FILE, dtype=str)
-        # Re-align existing columns if file was from older schema
+        existing_df = pd.read_csv(DATA_FILE, dtype=str).fillna("")
         for col in STANDARD_COLUMNS:
             if col not in existing_df.columns:
                 existing_df[col] = ""
         existing_df = existing_df[STANDARD_COLUMNS]
-        combined_df = pd.concat([existing_df, df], ignore_index=True)
+        df_clean = df.astype(str).fillna("")
+        combined_df = pd.concat([existing_df, df_clean], ignore_index=True)
     else:
-        combined_df = df
+        combined_df = df.astype(str).fillna("")
 
     if not combined_df.empty:
         # Deduplicate on canonical key: (indicator_value, source, date_added)
         combined_df = combined_df.drop_duplicates(subset=DEDUP_COLUMNS, keep="last")
 
     combined_df.to_csv(DATA_FILE, index=False)
+
 
 
 def load_events() -> pd.DataFrame:

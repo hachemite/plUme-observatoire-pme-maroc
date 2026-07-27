@@ -10,8 +10,9 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from processing.validate import validate_rows
-from processing.taxonomy import categorize
+from processing.taxonomy import categorize, severity
 from storage.repository import save_events, load_events
+
 
 URLHAUS_CSV_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/"
 
@@ -97,9 +98,11 @@ def run_pipeline() -> None:
 
     print("[URLhaus] Categorizing threats with taxonomy...")
     categorized_df = categorize(validated_df)
+    enriched_df = severity(categorized_df)
 
     print("[URLhaus] Saving events to storage repository...")
-    save_events(categorized_df)
+    save_events(enriched_df)
+
 
     saved_events = load_events()
     print(f"\n[URLhaus Pipeline Completed]")
