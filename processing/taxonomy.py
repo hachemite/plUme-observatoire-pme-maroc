@@ -127,6 +127,52 @@ def severity(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def sector_hint(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a `sector_hint` column to the DataFrame based on keyword matching on indicator_value and tags.
+    Keywords:
+        - ecommerce: wordpress, prestashop, woocommerce, shop
+        - banking: bank, banque, paiement
+        - government: .gov.ma, gouv
+    Defaults to 'unknown' if no keywords match.
+
+    Args:
+        df: Input DataFrame containing threat data.
+
+    Returns:
+        pd.DataFrame: DataFrame with populated `sector_hint` column.
+    """
+    if df.empty:
+        df = df.copy()
+        df["sector_hint"] = []
+        return df
+
+    df = df.copy()
+    sector_hints = []
+
+    sector_map = {
+        "ecommerce": ["wordpress", "prestashop", "woocommerce", "shop"],
+        "banking": ["bank", "banque", "paiement"],
+        "government": [".gov.ma", "gouv"],
+    }
+
+    for _, row in df.iterrows():
+        indicator_str = str(row.get("indicator_value", "")).lower()
+        tags_str = str(row.get("tags", "")).lower()
+        combined_text = f"{indicator_str} {tags_str}"
+
+        matched_sector = "unknown"
+        for sector, keywords in sector_map.items():
+            if any(kw in combined_text for kw in keywords):
+                matched_sector = sector
+                break
+
+        sector_hints.append(matched_sector)
+
+    df["sector_hint"] = sector_hints
+    return df
+
+
+
 def categorize(df: pd.DataFrame) -> pd.DataFrame:
     """Add a `category` column to the DataFrame using the keyword dictionary.
     Checks `tags` first, falling back to `raw_threat_tag`, then `indicator_value`,
