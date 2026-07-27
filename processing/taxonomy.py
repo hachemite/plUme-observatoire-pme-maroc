@@ -80,6 +80,8 @@ def categorize_text(text: str) -> str:
 
 def categorize(df: pd.DataFrame) -> pd.DataFrame:
     """Add a `category` column to the DataFrame using the keyword dictionary.
+    Checks `tags` first, falling back to `raw_threat_tag`, then `indicator_value`,
+    and finally defaulting to `ransomware_malware`.
 
     Args:
         df: DataFrame containing threat data.
@@ -96,16 +98,41 @@ def categorize(df: pd.DataFrame) -> pd.DataFrame:
     categories = []
 
     for _, row in df.iterrows():
-        # Combine all relevant text fields for keyword matching
-        raw_tag = str(row.get("raw_threat_tag", row.get("threat_type", row.get("tags", ""))))
-        url = str(row.get("indicator_value", row.get("url", "")))
-        combined_text = f"{raw_tag} {url}"
+        tags_str = str(row.get("tags", "")) if pd.notna(row.get("tags")) else ""
+        raw_tag_str = str(row.get("raw_threat_tag", row.get("threat_type", ""))) if pd.notna(row.get("raw_threat_tag", row.get("threat_type"))) else ""
+        indicator_str = str(row.get("indicator_value", row.get("url", ""))) if pd.notna(row.get("indicator_value", row.get("url"))) else ""
 
-        cat = categorize_text(combined_text)
+        # Step 1: Check tags first
+        cat = None
+        if tags_str.strip():
+            for c in [CAT_PHISHING, CAT_WEB_ATTACK, CAT_DDOS, CAT_MALWARE]:
+                if any(kw in tags_str.lower() for kw in THREAT_KEYWORD_MAP[c]):
+                    cat = c
+                    break
+
+        # Step 2: Fall back to raw_threat_tag
+        if not cat and raw_tag_str.strip():
+            for c in [CAT_PHISHING, CAT_WEB_ATTACK, CAT_DDOS, CAT_MALWARE]:
+                if any(kw in raw_tag_str.lower() for kw in THREAT_KEYWORD_MAP[c]):
+                    cat = c
+                    break
+
+        # Step 3: Fall back to indicator_value / URL
+        if not cat and indicator_str.strip():
+            for c in [CAT_PHISHING, CAT_WEB_ATTACK, CAT_DDOS, CAT_MALWARE]:
+                if any(kw in indicator_str.lower() for kw in THREAT_KEYWORD_MAP[c]):
+                    cat = c
+                    break
+
+        # Step 4: Default to ransomware_malware
+        if not cat:
+            cat = CAT_MALWARE
+
         categories.append(cat)
 
     df["category"] = categories
     return df
+
 
 
 def classify_threat(threat_type: str = "", tags: str = "", url: str = "") -> str:
