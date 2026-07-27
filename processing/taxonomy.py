@@ -1,142 +1,118 @@
-"""Taxonomy module for categorizing threat events according to the AUSIM/CMRPI guide."""
+"""Taxonomy module for categorizing threat events into canonical categories."""
 
 import pandas as pd
 
-# Priority threat categories for Moroccan SMEs (AUSIM/CMRPI Guide)
-CAT_PHISHING = "Phishing / ingénierie sociale / credential theft"
-CAT_MALWARE = "Ransomware / malware"
-CAT_WEB_ATTACK = "Attaques web / injection"
-CAT_DDOS = "DDoS / extorsion"
-CAT_OTHER = "Autre"
+# Canonical category key definitions
+CAT_PHISHING = "phishing"
+CAT_MALWARE = "ransomware_malware"
+CAT_WEB_ATTACK = "web_attack"
+CAT_DDOS = "ddos_extortion"
 
-# Primary sector mapping for Moroccan SMEs
-SECTOR_MAP = {
-    CAT_PHISHING: "Banque / Finance",
-    CAT_MALWARE: "Services",
-    CAT_WEB_ATTACK: "Commerce / E-commerce",
-    CAT_DDOS: "Commerce / E-commerce",
-    CAT_OTHER: "Général",
+# Keyword dictionary mapping threat keywords/tags to one of 4 canonical categories
+THREAT_KEYWORD_MAP = {
+    CAT_PHISHING: [
+        "phish",
+        "credential",
+        "login",
+        "bank",
+        "spoof",
+        "hameçonnage",
+        "fake-page",
+        "account",
+    ],
+    CAT_WEB_ATTACK: [
+        "web",
+        "injection",
+        "sqli",
+        "xss",
+        "webshell",
+        "exploit",
+        "owasp",
+        "command-execution",
+        "rce",
+    ],
+    CAT_DDOS: [
+        "ddos",
+        "dos",
+        "extortion",
+        "flood",
+        "amplification",
+    ],
+    CAT_MALWARE: [
+        "malware",
+        "ransomware",
+        "trojan",
+        "virus",
+        "dropper",
+        "payload",
+        "botnet",
+        "emotet",
+        "lokibot",
+        "agenttesla",
+        "formbook",
+        "asyncrat",
+        "remcos",
+        "qakbot",
+        "exe",
+        "elf",
+        "apk",
+        "rat",
+        "stealer",
+    ],
 }
 
 
-def classify_threat(threat_type: str = "", tags: str = "", url: str = "") -> str:
-    """Classify a threat into an AUSIM category based on threat type, tags, and URL.
-
-    Args:
-        threat_type: Raw threat classification string.
-        tags: Tags associated with the threat indicator.
-        url: Threat indicator URL.
-
-    Returns:
-        str: Mapped AUSIM category name.
+def categorize_text(text: str) -> str:
+    """Categorize text string into one of 4 canonical threat categories.
+    Defaults to 'ransomware_malware' if no keywords match.
     """
-    text = f"{threat_type} {tags} {url}".lower()
+    text_lower = str(text).lower()
 
-    # Phishing / Credential theft keywords
-    if any(
-        kw in text
-        for kw in [
-            "phish",
-            "credential",
-            "login",
-            "bank",
-            "spoof",
-            "hameçonnage",
-            "fake-page",
-            "account",
-        ]
-    ):
-        return CAT_PHISHING
+    # Check categories in priority order
+    for cat in [CAT_PHISHING, CAT_WEB_ATTACK, CAT_DDOS, CAT_MALWARE]:
+        keywords = THREAT_KEYWORD_MAP[cat]
+        if any(kw in text_lower for kw in keywords):
+            return cat
 
-    # Ransomware / Malware keywords
-    if any(
-        kw in text
-        for kw in [
-            "malware",
-            "ransomware",
-            "trojan",
-            "virus",
-            "dropper",
-            "payload",
-            "botnet",
-            "emotet",
-            "lokibot",
-            "agenttesla",
-            "formbook",
-            "asyncrat",
-            "remcos",
-            "qakbot",
-            "exe",
-            "elf",
-            "apk",
-            "rat",
-            "stealer",
-        ]
-    ):
-        return CAT_MALWARE
-
-    # Web attack / injection / OWASP keywords
-    if any(
-        kw in text
-        for kw in [
-            "web",
-            "injection",
-            "sqli",
-            "xss",
-            "webshell",
-            "exploit",
-            "owasp",
-            "command-execution",
-            "rce",
-        ]
-    ):
-        return CAT_WEB_ATTACK
-
-    # DDoS / Extorsion keywords
-    if any(kw in text for kw in ["ddos", "dos", "extortion", "flood", "amplification"]):
-        return CAT_DDOS
-
-    return CAT_OTHER
+    # Default to ransomware_malware
+    return CAT_MALWARE
 
 
-def map_target_sector(category: str) -> str:
-    """Map an AUSIM threat category to the most vulnerable Moroccan SME sector.
+def categorize(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a `category` column to the DataFrame using the keyword dictionary.
 
     Args:
-        category: AUSIM threat category.
+        df: DataFrame containing threat data.
 
     Returns:
-        str: Target SME sector name.
-    """
-    return SECTOR_MAP.get(category, "Général")
-
-
-def enrich_with_taxonomy(df: pd.DataFrame) -> pd.DataFrame:
-    """Enrich DataFrame with AUSIM category and target sector classifications.
-
-    Args:
-        df: DataFrame containing threat events.
-
-    Returns:
-        pd.DataFrame: Enriched DataFrame with 'category' and 'target_sector'.
+        pd.DataFrame: DataFrame with updated `category` column.
     """
     if df.empty:
+        df = df.copy()
+        df["category"] = []
         return df
 
     df = df.copy()
     categories = []
-    sectors = []
 
     for _, row in df.iterrows():
-        cat = classify_threat(
-            threat_type=str(row.get("threat_type", "")),
-            tags=str(row.get("tags", "")),
-            url=str(row.get("url", "")),
-        )
-        sec = map_target_sector(cat)
+        # Combine all relevant text fields for keyword matching
+        raw_tag = str(row.get("raw_threat_tag", row.get("threat_type", row.get("tags", ""))))
+        url = str(row.get("indicator_value", row.get("url", "")))
+        combined_text = f"{raw_tag} {url}"
+
+        cat = categorize_text(combined_text)
         categories.append(cat)
-        sectors.append(sec)
 
     df["category"] = categories
-    df["target_sector"] = sectors
     return df
+
+
+def classify_threat(threat_type: str = "", tags: str = "", url: str = "") -> str:
+    """Legacy helper for classification."""
+    return categorize_text(f"{threat_type} {tags} {url}")
+
+
+def enrich_with_taxonomy(df: pd.DataFrame) -> pd.DataFrame:
+    """Enrich DataFrame using taxonomy categorization."""
+    return categorize(df)
