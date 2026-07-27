@@ -76,11 +76,13 @@ def fetch_urlhaus_feed(url: str = URLHAUS_CSV_URL) -> pd.DataFrame:
     formatted_df["indicator_type"] = "url"
     formatted_df["indicator_value"] = raw_df["url"]
     formatted_df["raw_threat_tag"] = raw_df.get("threat", raw_df.get("threat_type", ""))
+    formatted_df["tags"] = raw_df.get("tags", "").fillna("").astype(str)
 
     status_series = raw_df.get("url_status", "offline").astype(str).str.lower()
     formatted_df["status"] = status_series.apply(lambda s: "online" if s == "online" else "offline")
 
     return formatted_df
+
 
 
 def run_pipeline() -> None:
