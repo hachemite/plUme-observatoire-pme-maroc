@@ -16,7 +16,9 @@ class ThreatEvent(BaseModel):
     indicator_value: str
     raw_threat_tag: str
     tags: str = ""
+    country_code: str = ""
     status: Literal["online", "offline", "reported"]
+
 
 
 
