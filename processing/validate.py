@@ -15,7 +15,9 @@ class ThreatEvent(BaseModel):
     indicator_type: Literal["url"]
     indicator_value: str
     raw_threat_tag: str
+    tags: str = ""
     status: Literal["online", "offline"]
+
 
 
 class URLhausRow(BaseModel):
