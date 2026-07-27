@@ -11,8 +11,9 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from processing.validate import validate_rows
-from processing.taxonomy import categorize, severity
+from processing.taxonomy import categorize, severity, sector_hint
 from storage.repository import save_events, load_events
+
 
 
 # Load environment variables from .env file
@@ -68,6 +69,7 @@ def fetch_abuseipdb_feed(limit: int = 100) -> pd.DataFrame:
     formatted_df["indicator_value"] = raw_df["ipAddress"]
     formatted_df["raw_threat_tag"] = "abuse_reported"
     formatted_df["tags"] = "confidence_" + raw_df["abuseConfidenceScore"].astype(str)
+    formatted_df["country_code"] = raw_df.get("countryCode", "").fillna("").astype(str)
     formatted_df["status"] = "reported"
 
     return formatted_df
@@ -90,9 +92,11 @@ def run_pipeline() -> None:
     print("[AbuseIPDB] Categorizing threats with taxonomy...")
     categorized_df = categorize(validated_df)
     enriched_df = severity(categorized_df)
+    enriched_df = sector_hint(enriched_df)
 
     print("[AbuseIPDB] Saving events to storage repository...")
     save_events(enriched_df)
+
 
 
     saved_events = load_events()
