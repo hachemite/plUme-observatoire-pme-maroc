@@ -89,10 +89,13 @@ def run_collector() -> int:
     enriched_df = enrich_with_taxonomy(validated_df)
 
     print("[URLhaus] Saving events to storage repository...")
-    total_saved = save_events(enriched_df)
+    save_events(enriched_df)
+    from storage.repository import load_events
+    total_saved = len(load_events())
     print(f"[URLhaus] Successfully saved events. Total repository records: {total_saved}")
     return total_saved
 
 
 if __name__ == "__main__":
     run_collector()
+
