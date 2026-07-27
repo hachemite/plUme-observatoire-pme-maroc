@@ -12,11 +12,12 @@ class ThreatEvent(BaseModel):
     event_id: str
     source: str
     date_added: datetime
-    indicator_type: Literal["url"]
+    indicator_type: Literal["url", "ip"]
     indicator_value: str
     raw_threat_tag: str
     tags: str = ""
     status: Literal["online", "offline", "reported"]
+
 
 
 
