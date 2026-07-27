@@ -12,7 +12,9 @@ __pycache__/
 
 # Environment variables & secrets
 .env
-.env.*
+.env.local
+.env.*.local
+
 
 # Project-specific private/custom files
 work official document mission/
