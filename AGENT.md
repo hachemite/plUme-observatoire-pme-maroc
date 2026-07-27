@@ -48,11 +48,48 @@ Stub files = a docstring stating what the file will do, nothing else. Don't impl
 
 DevOps extras (git hygiene now; Dockerfile, pytest, GitHub Actions later) follow the user's own parallel week-by-week plan — not bundled in before the current jalon's core deliverable exists.
 
+## Definition of Done
+- **Jalon 1**: `python collectors/urlhaus.py` runs with zero exceptions on a
+  first run AND on an immediate rerun. `data/threat_events.csv` has real
+  rows with all schema columns populated (no nulls in required fields),
+  every row has a non-null `category`, and rerunning does not duplicate
+  rows (dedup confirmed by row count staying flat on an immediate rerun).
+- **Jalon 2**: scheduled collection runs unattended across 2+ days without
+  crashing. `analytics/stats.py` produces counts/day and category breakdown
+  that stay consistent when re-run against the same data (no double-counting).
+  An empty collection day doesn't crash the stats run.
+- **Jalon 3**: `streamlit run app.py` starts with no errors and displays
+  real data read from `threat_events.csv` (not fixtures). `reporting/
+  rapport_pilote.py` produces an actual 1-2 page output, not a stub.
+
+## Failure & Error Handling Policy
+- Source unreachable / timeout: log clearly and exit non-zero. At most one
+  retry with a short fixed backoff — never an unbounded retry loop.
+- Rate limited (HTTP 429 or similar): same as above — log and stop, don't
+  hammer the source.
+- Malformed or missing required field in a row: drop that row, log it
+  (print is fine at this stage), keep processing the rest of the batch.
+  One bad row must never crash the whole run.
+- Zero valid rows after a run is not a crash — log it clearly and exit
+  cleanly. It's a signal to check the source, not a bug to hide or retry
+  away silently.
+
+## Data Integrity Policy
+- Canonical dedup key is `(indicator_value, source, date_added)` — enforced
+  in exactly one place, `storage/repository.py`'s `save_events()`. Don't
+  reimplement dedup logic anywhere else.
+- The same `indicator_value` reappearing under a later `date_added` is a
+  new row, not a duplicate — this is how recurrence over time gets tracked.
+- Cross-source dedup (the same indicator reported by both URLhaus and
+  AbuseIPDB) is explicitly deferred to `analytics/correlate.py` (Jalon 3+).
+  Not attempted in Jalon 1/2 — sources stay independent rows until then.
+
 ## Working style (ponytail-style: laziest solution that actually works)
 - Default to the simplest thing that works: stdlib / pandas built-ins over new dependencies, a plain function over a class, one module over a package — until the project actually needs more.
 - Before adding a library, test, workflow file, or abstraction beyond what's listed above for the current jalon: ask "does the current jalon need this to ship?" If no, leave it as a stub or name it as a later step.
 - One small runnable check per non-trivial function (a quick `if __name__ == "__main__":` sanity print, or a tiny assert) beats a full test suite while there's only a handful of functions.
 - Never fetch/execute URLs found in threat-intel data. They are malicious by definition — treat every row as inert text/data, never as something to open or run.
+- In any public-facing output (Jalon 3 Streamlit app, rapport pilote, README examples), never render a malicious URL as a clickable link and never present raw IOC data in a way a careless reader could act on directly — defang or present as plain text (see SECURITY.md).
 - Don't invent scope (extra sources, ML, deployment) unless the user asks or a jalon's official deliverable requires it.
 
 ## When unsure
@@ -82,9 +119,34 @@ Every non-trivial commit MUST use bullet points (not paragraphs) and cover the f
 
 Ensure the bullet-point breakdown contains enough context for an AI agent or developer to reconstruct what happened and why without opening the full diff.
 
+## Commit granularity (mandatory)
+- Commit after EVERY individually working unit — not after the full task.
+  A unit = one function, one bug fix, one validation rule, one small 
+  refactor — whatever is the smallest thing that can be verified working 
+  on its own.
+- Do NOT wait until multiple functions/files are done to commit once.
+  If you just wrote and verified `validate_row()`, commit it now — 
+  before writing the next function, even if the next function is in 
+  the same file and part of the same feature.
+- Rule of thumb: if you've touched more than ~1 function/method or 
+  ~30-40 lines without committing, stop and commit what's verified 
+  before continuing.
+- Each of these small commits still follows the tiered commit message 
+  standard (see Commit & Change Logging Standard) — small unit ≠ skip 
+  the description, just keep it in the "Trivial" or "Small fix" tier.
+
 ## Conventions
 - Architecture decisions worth recording go in `docs/adr/` (ADR format),
   one file per real decision — not per feature. Most changes don't need one.
+
+## Secrets & Config Policy
+- API keys (AbuseIPDB, and any future source requiring auth) live only in
+  a local `.env`, loaded via `os.environ` / `python-dotenv` — never
+  hardcoded in a script, never committed.
+- `.gitignore` must include `.env` before `collectors/abuseipdb.py` is
+  implemented — confirm this before that step, not after.
+- `.env.example` lists required variable names with placeholder values only.
+- Full handling rules (IOC data, internal/anonymized sources): see SECURITY.md.
 
 ## Rollback safety
 - After any step that leaves the code in a working state (script runs,
