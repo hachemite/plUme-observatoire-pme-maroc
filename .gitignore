@@ -24,3 +24,9 @@ PROJECT_CONTEXT.txt
 *.swp
 .DS_Store
 Thumbs.db
+
+# Repomix output
+repomix-output.txt
+repomix-output.xml
+repomix-output.json
+

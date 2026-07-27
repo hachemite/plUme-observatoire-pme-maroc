@@ -64,10 +64,25 @@ Ask the user rather than assuming — especially before adding anything outside 
   until Jalon 2+. Don't invoke `docker compose`, `pytest`, or a linter;
   none are set up.
 
+## Commit & Change Logging Standard
+Every change — whether a small fix, bug patch, new feature, or refactor — must be committed with a detailed description, not a vague one-liner.
+
+Commit messages must scale detail to change size:
+- **Trivial (typo/format)**: 15–30 words, single bullet.
+- **Small fix**: 60–100 words, 3–5 bullets.
+- **Feature / Medium**: 120–180 words, 5–8 bullets (minimum ~150 words for non-trivial changes).
+- **Major / Breaking**: 200–300 words, 8+ bullets + migration notes.
+
+Every non-trivial commit MUST use bullet points (not paragraphs) and cover the following categories:
+- **Summary**: 1–2 line overview of what changed and why.
+- **Files changed**: Explicit bullet list of every touched file.
+- **Root cause / Motivation**: Why this change was needed.
+- **Technical approach**: What was actually done (method, key logic, algorithms, parameters modified).
+- **Side effects or risks**: Potential impacts, edge cases, or risks (if any).
+
+Ensure the bullet-point breakdown contains enough context for an AI agent or developer to reconstruct what happened and why without opening the full diff.
+
 ## Conventions
-- Commits: plain, descriptive messages (`git commit -m "add urlhaus collector"`)
-  is enough. No branch strategy needed for a solo 6-week project — commit
-  to `main`, small commits, one per working step.
 - Architecture decisions worth recording go in `docs/adr/` (ADR format),
   one file per real decision — not per feature. Most changes don't need one.
 
