@@ -9,16 +9,15 @@ DATA_DIR = BASE_DIR / "data"
 DATA_FILE = DATA_DIR / "threat_events.csv"
 
 STANDARD_COLUMNS = [
-    "id",
+    "event_id",
     "source",
-    "url",
-    "url_status",
-    "threat_type",
-    "tags",
     "date_added",
-    "reporter",
+    "indicator_type",
+    "indicator_value",
+    "raw_threat_tag",
+    "tags",
+    "status",
     "category",
-    "target_sector",
 ]
 
 # Canonical deduplication subset key as per Data Integrity Policy
@@ -34,27 +33,35 @@ def save_events(df: pd.DataFrame) -> None:
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Ensure required columns exist
+    if df.empty:
+        if not DATA_FILE.exists():
+            pd.DataFrame(columns=STANDARD_COLUMNS).to_csv(DATA_FILE, index=False)
+        return
+
+    df = df.copy()
+
+    # Ensure all standard columns exist
     for col in STANDARD_COLUMNS:
         if col not in df.columns:
             df[col] = ""
 
-    # Derive indicator_value if missing (defaults to url field for URLhaus)
-    if "indicator_value" not in df.columns:
-        df["indicator_value"] = df["url"]
+    # Align columns to exact standard schema
+    df = df[STANDARD_COLUMNS]
 
     if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
         existing_df = pd.read_csv(DATA_FILE, dtype=str)
-        if "indicator_value" not in existing_df.columns:
-            existing_df["indicator_value"] = existing_df.get("url", "")
+        # Re-align existing columns if file was from older schema
+        for col in STANDARD_COLUMNS:
+            if col not in existing_df.columns:
+                existing_df[col] = ""
+        existing_df = existing_df[STANDARD_COLUMNS]
         combined_df = pd.concat([existing_df, df], ignore_index=True)
     else:
         combined_df = df
 
     if not combined_df.empty:
         # Deduplicate on canonical key: (indicator_value, source, date_added)
-        dedup_subset = [col for col in DEDUP_COLUMNS if col in combined_df.columns]
-        combined_df = combined_df.drop_duplicates(subset=dedup_subset, keep="last")
+        combined_df = combined_df.drop_duplicates(subset=DEDUP_COLUMNS, keep="last")
 
     combined_df.to_csv(DATA_FILE, index=False)
 
@@ -69,4 +76,5 @@ def load_events() -> pd.DataFrame:
     if DATA_FILE.exists() and DATA_FILE.stat().st_size > 0:
         return pd.read_csv(DATA_FILE, dtype=str)
     return pd.DataFrame(columns=STANDARD_COLUMNS)
+
 
