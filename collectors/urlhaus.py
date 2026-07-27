@@ -10,8 +10,9 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from processing.validate import validate_rows
-from processing.taxonomy import categorize, severity
+from processing.taxonomy import categorize, severity, sector_hint
 from storage.repository import save_events, load_events
+
 
 
 URLHAUS_CSV_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/"
@@ -78,6 +79,7 @@ def fetch_urlhaus_feed(url: str = URLHAUS_CSV_URL) -> pd.DataFrame:
     formatted_df["indicator_value"] = raw_df["url"]
     formatted_df["raw_threat_tag"] = raw_df.get("threat", raw_df.get("threat_type", ""))
     formatted_df["tags"] = raw_df.get("tags", "").fillna("").astype(str)
+    formatted_df["country_code"] = ""
 
     status_series = raw_df.get("url_status", "offline").astype(str).str.lower()
     formatted_df["status"] = status_series.apply(lambda s: "online" if s == "online" else "offline")
@@ -99,9 +101,11 @@ def run_pipeline() -> None:
     print("[URLhaus] Categorizing threats with taxonomy...")
     categorized_df = categorize(validated_df)
     enriched_df = severity(categorized_df)
+    enriched_df = sector_hint(enriched_df)
 
     print("[URLhaus] Saving events to storage repository...")
     save_events(enriched_df)
+
 
 
     saved_events = load_events()
