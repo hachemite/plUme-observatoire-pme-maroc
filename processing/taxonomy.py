@@ -124,14 +124,23 @@ def categorize(df: pd.DataFrame) -> pd.DataFrame:
                     cat = c
                     break
 
-        # Step 4: Default to ransomware_malware
+        # Step 4: Source-aware fallback defaults
+        # Judgment Call: AbuseIPDB blacklists lack tag fields; IP blacklists correlate strongly
+        # with brute-force / DDoS / botnet activity rather than URL malware downloads.
+        # Therefore, default abuseipdb events to ddos_extortion, while keeping ransomware_malware
+        # as default for urlhaus.
         if not cat:
-            cat = CAT_MALWARE
+            source_val = str(row.get("source", "")).strip().lower()
+            if source_val == "abuseipdb":
+                cat = CAT_DDOS
+            else:
+                cat = CAT_MALWARE
 
         categories.append(cat)
 
     df["category"] = categories
     return df
+
 
 
 
