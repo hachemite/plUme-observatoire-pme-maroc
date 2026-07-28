@@ -65,11 +65,11 @@ Re-génération de `notebooks/exploration.ipynb` via `scripts/build_notebook.py`
 
 ### Métriques des données
 - **Dimensions (`df.shape`)** : `(15697, 12)`
-- **Qualité (`df.isnull().sum()`)** :
-  - 100% de complétude (0 valeur nulle) sur l'ensemble des 11 champs obligatoires.
-  - Champ optionnel `tags` : 1 129 valeurs manquantes (7,19% d'absence, 92,81% de complétude), conforme au flux d'origine.
-  - `country_code` : 200 valeurs renseignées depuis AbuseIPDB (dont 119 US, 11 NL, 9 CN, 7 IN, 5 BR, 5 VN, etc.).
-  - `sector_hint` : 45 `ecommerce`, 4 `banking`, 15 648 `unknown`.
+- **Qualité des données et complétude du schéma** :
+  Sur les 15 697 événements collectés, les 9 champs du schéma de validation `ThreatEvent` (`event_id`, `source`, `date_added`, `indicator_type`, `indicator_value`, `raw_threat_tag`, `status`, `category`, `severity`) affichent 100% de complétude. Le champ `tags`, optionnel dans le schéma (`tags: str = ""`), est absent pour 1 129 événements (7,19%), reflétant des enregistrements URLhaus fournis sans étiquette source.
+
+  Les deux champs d'enrichissement ajoutés lors du Jalon 1 sont techniquement complets (aucune valeur NaN après remplissage par défaut) mais peu informatifs à ce stade : `country_code`, alimenté uniquement par AbuseIPDB (URLhaus ne fournit pas de géolocalisation IP), n'est renseigné que pour 200 événements sur 15 697 (1,3%) ; `sector_hint`, basé sur une inférence par mots-clés génériques, n'identifie un secteur autre que "unknown" que pour 49 événements (0,3%). Ces deux limites sont attendues à ce stade du projet et seront adressées en priorité lors des jalons suivants.
+
 - **Répartition des catégories (`df['category'].value_counts()`)** :
   - `ransomware_malware`: 15 480
   - `ddos_extortion`: 210
@@ -80,5 +80,5 @@ Re-génération de `notebooks/exploration.ipynb` via `scripts/build_notebook.py`
 
 ## 6. Mise à jour de la Documentation (Étape 6)
 Sections ajoutées au `README.md` :
-1. Précision sur la qualité des données et l'absence de valeurs nulles sur les champs requis (et précision sur la nature optionnelle du champ `tags`).
+1. Précision sur la qualité des données et l'analyse détaillée des 9 champs du schéma de validation `ThreatEvent` ainsi que du comportement des champs d'enrichissement `country_code` et `sector_hint`.
 2. Clarté sur la portée du Jalon 1 (sources globales URLhaus / AbuseIPDB, provenance des IP attaquantes vs victimes, inférence sectorielle générique) et l'arrivée des signaux spécifiques marocains (DGSSI) au Jalon 2+.
