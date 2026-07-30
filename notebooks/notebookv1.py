@@ -238,6 +238,9 @@ else:
     print("Aucune donnée AbuseIPDB disponible pour l'analyse de sévérité.")
 
 # %% [markdown]
+# *Note explicative : Les 200 adresses IP collectées via AbuseIPDB sont toutes classées avec une sévérité `high` (`abuseConfidenceScore == 100`). Cela est tout à fait logique et attendu : l'API v2 `/blacklist` d'AbuseIPDB applique par défaut un filtre strict ne retournant que les IP signalées avec un niveau de confiance de menace maximal (>= 90-100%). Les niveaux `medium` et `low` n'apparaissent que si l'on abaisse le paramètre `confidenceMinimum` ou lors d'analyses ciblant des IP individuelles.*
+
+# %% [markdown]
 # ## 7. Analyse sectorielle (sector_hint)
 
 # %%

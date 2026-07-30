@@ -221,6 +221,7 @@ if not abuse_df.empty and "severity" in abuse_df.columns:
 else:
     print("Aucune donnée AbuseIPDB disponible pour l'analyse de sévérité.")"""
 nb.cells.append(new_code_cell(code_6))
+nb.cells.append(new_markdown_cell("""*Note explicative : Les 200 adresses IP collectées via AbuseIPDB sont toutes classées avec une sévérité `high` (`abuseConfidenceScore == 100`). Cela est tout à fait logique et attendu : l'API v2 `/blacklist` d'AbuseIPDB applique par défaut un filtre strict ne retournant que les IP signalées avec un niveau de confiance de menace maximal (>= 90-100%). Les niveaux `medium` et `low` n'apparaissent que si l'on abaisse le paramètre `confidenceMinimum` ou lors d'analyses ciblant des IP individuelles.*"""))
 
 # Section 7: Analyse sectorielle
 nb.cells.append(new_markdown_cell("""## 7. Analyse sectorielle (sector_hint)"""))
