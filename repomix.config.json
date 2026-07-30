@@ -1,7 +1,7 @@
 {
   "output": {
     "filePath": "repomix-output.txt",
-    "style": "markdown",
+    "style": "xml",
     "headerText": "Repomix output for observatoire-pme-maroc",
     "showLineNumbers": true
   },
@@ -13,7 +13,11 @@
       "data/*.csv",
       "data/*.parquet",
       "work official document mission/**",
-      "PROJECT_CONTEXT.txt"
+      "PROJECT_CONTEXT.txt",
+      "**/*.ipynb",
+      "**/*.html",
+      "**/explaining/**",
+      "explaining/**"
     ]
   }
 }
