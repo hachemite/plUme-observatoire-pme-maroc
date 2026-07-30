@@ -50,7 +50,7 @@ COLOR_PRIMARY = "#1f77b4"
 COLOR_SECONDARY = "#2ca02c"
 COLOR_ACCENT = "#d62728"
 COLOR_WARN = "#ff7f0e"
-'''
+"""
 nb.cells.append(new_code_cell(code_0))
 
 # Section 1: Chargement et vue d'ensemble
