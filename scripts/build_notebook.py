@@ -70,9 +70,13 @@ print("--- Échantillon URLhaus ---")
 display_urlhaus = df[df["source"] == "urlhaus"].head(5)
 display(display_urlhaus)
 
-print("--- Échantillon AbuseIPDB ---")
+print("\n--- Échantillon AbuseIPDB (avec sévérité et géolocalisation renseignées) ---")
 display_abuse = df[df["source"] == "abuseipdb"].head(5)
-display(display_abuse)"""
+display(display_abuse)
+
+print("\n--- Échantillon d'événements avec secteur ciblé inféré (sector_hint != 'unknown') ---")
+display_sector = df[df["sector_hint"] != "unknown"][["event_id", "source", "indicator_value", "category", "sector_hint"]].head(5)
+display(display_sector)"""
 nb.cells.append(new_code_cell(code_1_samples))
 
 # Section 2: Répartition par source
@@ -237,7 +241,11 @@ for p in ax.patches:
 plt.tight_layout()
 plt.show()
 
-print(f"'unknown' représente {sector_counts.get('unknown', 0) / len(df) * 100:.1f}% des événements — "
+print("--- Échantillon des événements avec secteur identifié (banking, ecommerce, government) ---")
+display_sector_known = df[df["sector_hint"] != "unknown"][["event_id", "source", "indicator_value", "category", "sector_hint"]].head(10)
+display(display_sector_known)
+
+print(f"\n'unknown' représente {sector_counts.get('unknown', 0) / len(df) * 100:.1f}% des événements — "
       f"limite attendue au Jalon 1, à adresser via des règles plus fines ou des sources marocaines "
       f"(DGSSI) aux jalons suivants.")"""
 nb.cells.append(new_code_cell(code_7))

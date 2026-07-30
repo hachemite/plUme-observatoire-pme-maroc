@@ -68,9 +68,13 @@ print("--- Échantillon URLhaus ---")
 display_urlhaus = df[df["source"] == "urlhaus"].head(5)
 print(display_urlhaus.to_string())
 
-print("\n--- Échantillon AbuseIPDB ---")
+print("\n--- Échantillon AbuseIPDB (avec sévérité et géolocalisation renseignées) ---")
 display_abuse = df[df["source"] == "abuseipdb"].head(5)
 print(display_abuse.to_string())
+
+print("\n--- Échantillon d'événements avec secteur ciblé inféré (sector_hint != 'unknown') ---")
+display_sector = df[df["sector_hint"] != "unknown"][["event_id", "source", "indicator_value", "category", "sector_hint"]].head(5)
+print(display_sector.to_string())
 
 # %% [markdown]
 # ## 2. Répartition par source de données
