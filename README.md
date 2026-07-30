@@ -57,7 +57,7 @@ observatoire-pme-maroc/
 #### Étapes d'installation
 ```bash
 # 1. Cloner le dépôt
-git clone <repository_url>
+git clone https://github.com/hachemite/plUme-observatoire-pme-maroc.git
 cd observatoire-pme-maroc
 
 # 2. Créer et activer l'environnement virtuel
@@ -131,7 +131,7 @@ The project periodically ingests threat indicators (IoCs) from public threat fee
 #### Setup Steps
 ```bash
 # 1. Clone repository
-git clone <repository_url>
+git clone https://github.com/hachemite/plUme-observatoire-pme-maroc.git
 cd observatoire-pme-maroc
 
 # 2. Create and activate virtual environment
