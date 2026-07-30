@@ -1,0 +1,42 @@
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+
+# Project-specific private/custom files
+work official document mission/
+PROJECT_CONTEXT.txt
+explaining/
+
+
+# IDE & OS settings
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Repomix output
+repomix-output.txt
+repomix-output.xml
+repomix-output.json
+tree.txt
+test_output.txt
+test_results_pytest.xml
+test_results_pytest.json
+*.html
+
+

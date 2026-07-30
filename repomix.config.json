@@ -1,0 +1,23 @@
+{
+  "output": {
+    "filePath": "repomix-output.txt",
+    "style": "xml",
+    "headerText": "Repomix output for observatoire-pme-maroc",
+    "showLineNumbers": true
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "venv/**",
+      "data/*.csv",
+      "data/*.parquet",
+      "work official document mission/**",
+      "PROJECT_CONTEXT.txt",
+      "**/*.ipynb",
+      "**/*.html",
+      "**/explaining/**",
+      "explaining/**"
+    ]
+  }
+}
