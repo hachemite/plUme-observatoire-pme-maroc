@@ -43,7 +43,7 @@ Stub files = a docstring stating what the file will do, nothing else. Don't impl
 
 ## Sequencing (respect the jalon order — do not skip ahead)
 1. **Jalon 1** (due 30 juillet): `collectors/urlhaus.py` fully working end to end (fetch → validate → taxonomy-tag → save via repository). `collectors/abuseipdb.py` only if Jalon 1's primary already runs clean and produces real data. Everything else stays a stub.
-2. **Jalon 2** (due 15 août): scheduling + `analytics/stats.py` (counts/day, category breakdown) + optionally one more collector stub becomes real.
+2. **Jalon 2** (due 15 août): scheduling + `analytics/stats.py` (counts/day, category breakdown) + optionally one more collector stub becomes real. `analytics/stats.py` est passé de stub à implémentation réelle.
 3. **Jalon 3** (due 31 août): `app.py` (Streamlit) + `reporting/rapport_pilote.py` + docs.
 
 DevOps extras (git hygiene now; Dockerfile, pytest, GitHub Actions later) follow the user's own parallel week-by-week plan — not bundled in before the current jalon's core deliverable exists.
@@ -97,9 +97,9 @@ Ask the user rather than assuming — especially before adding anything outside 
 
 ## Commands
 - Run collector: `python collectors/urlhaus.py`
-- No build step, no lint config, no test suite yet — these don't exist
-  until Jalon 2+. Don't invoke `docker compose`, `pytest`, or a linter;
-  none are set up.
+- Run daily collection pipeline: `python scripts/run_daily_collection.py`
+- Run stats computation: `python analytics/stats.py`
+- Tests : pytest existe et tourne (`python -m pytest -v`), 13 tests passent actuellement.
 
 ## Commit & Change Logging Standard
 Every change — whether a small fix, bug patch, new feature, or refactor — must be committed with a detailed description, not a vague one-liner.
@@ -166,6 +166,4 @@ Ensure the bullet-point breakdown contains enough context for an AI agent or dev
   you want to discard everything after that point.
 
 ## Current focus
-Jalon 1 (due 30 juillet): `collectors/urlhaus.py` end to end, working,
-producing real rows in `data/threat_events.csv`. Nothing past step 5 of
-the Jalon 1 prompt until this is confirmed working with real output shown.
+Jalon 2 terminé et vérifié (`scripts/run_daily_collection.py`, `analytics/stats.py`, `tests/test_stats.py`, correction du bug de parsing de dates à fuseaux horaires mixtes), prêt à être envoyé. Jalon 3 pas commencé.
