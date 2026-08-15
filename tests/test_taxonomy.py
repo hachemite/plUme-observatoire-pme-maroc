@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from processing.taxonomy import categorize
+from processing.taxonomy import categorize, severity
 
 
 def test_row_with_phishing_tag_categorizes_as_phishing():
@@ -60,3 +60,25 @@ def test_abuseipdb_row_no_keyword_match_defaults_to_ddos_extortion():
 
     result_df = categorize(df_abuse_unknown)
     assert result_df.iloc[0]["category"] == "ddos_extortion"
+
+
+def test_urlhaus_severity_mapping():
+    """Test severity() mapping for URLhaus rows based on tags:
+    1. 'remcos' -> high
+    2. 'mirai' -> medium
+    3. 'clearfake' -> low
+    4. unrecognized tag -> unknown
+    """
+    df = pd.DataFrame([
+        {"source": "urlhaus", "tags": "remcos", "raw_threat_tag": ""},
+        {"source": "urlhaus", "tags": "mirai", "raw_threat_tag": ""},
+        {"source": "urlhaus", "tags": "clearfake", "raw_threat_tag": ""},
+        {"source": "urlhaus", "tags": "unrecognized_tag_xyz", "raw_threat_tag": ""},
+    ])
+
+    result_df = severity(df)
+    assert result_df.iloc[0]["severity"] == "high"
+    assert result_df.iloc[1]["severity"] == "medium"
+    assert result_df.iloc[2]["severity"] == "low"
+    assert result_df.iloc[3]["severity"] == "unknown"
+

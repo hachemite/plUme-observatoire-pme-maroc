@@ -1,5 +1,6 @@
 """Taxonomy module for categorizing threat events into canonical categories."""
 
+import re
 import pandas as pd
 
 # Canonical category key definitions
@@ -79,9 +80,11 @@ def categorize_text(text: str) -> str:
 
 
 def severity(df: pd.DataFrame) -> pd.DataFrame:
-    """Add a `severity` column to the DataFrame based on abuseConfidenceScore in `tags`.
-    Buckets score into: 'high' (>=90), 'medium' (50-89), 'low' (<50).
-    Only applies to 'abuseipdb' rows; 'urlhaus' and other sources default to 'unknown'.
+    """Add a `severity` column to the DataFrame.
+    - AbuseIPDB: derived from abuseConfidenceScore in `tags`.
+      Buckets: 'high' (>=90), 'medium' (50-89), 'low' (<50).
+    - URLhaus: derived from tag keywords in `tags` and `raw_threat_tag`.
+    - Other sources: default to 'unknown'.
 
     Args:
         df: Input DataFrame containing threat data.
@@ -99,6 +102,8 @@ def severity(df: pd.DataFrame) -> pd.DataFrame:
 
     for _, row in df.iterrows():
         source_val = str(row.get("source", "")).strip().lower()
+        tags_lower = str(row.get("tags", "")).lower() + " " + str(row.get("raw_threat_tag", "")).lower()
+
         if source_val == "abuseipdb":
             tags_val = str(row.get("tags", ""))
             score = None
@@ -118,6 +123,48 @@ def severity(df: pd.DataFrame) -> pd.DataFrame:
                     sev = "low"
             else:
                 sev = "unknown"
+
+        elif source_val == "urlhaus":
+            # Extraction des tokens avec séparateurs: virgule, espace, tiret
+            tokens = {t.strip() for t in re.split(r"[,\s\-]+", tags_lower) if t.strip()}
+
+            # High: RATs, stealers, ransomware — compromission critique
+            high_exact = {
+                "rat", "remcos", "agenttesla", "formbook", "asyncrat",
+                "qakbot", "xworm", "lokibot", "emotet", "njrat",
+                "quasarrat", "quasar", "vidar", "redline", "lumma",
+            }
+            # Medium: botnets, droppers, loaders, trojans — menaces automatisées
+            medium_exact = {
+                "mirai", "mozi", "tsunami", "amadey", "gafgyt",
+            }
+            # Low: social engineering / nuisances / adware
+            low_exact = {
+                "clearfake", "phish", "spam", "adware",
+            }
+
+            if any(
+                t in high_exact 
+                or t.endswith("rat") 
+                or "stealer" in t 
+                or "ransomware" in t 
+                for t in tokens
+            ):
+                sev = "high"
+            elif any(
+                t in medium_exact 
+                or "botnet" in t 
+                or "loader" in t 
+                or "trojan" in t 
+                or "dropper" in t 
+                for t in tokens
+            ):
+                sev = "medium"
+            elif any(t in low_exact or t.startswith("adware") for t in tokens):
+                sev = "low"
+            else:
+                sev = "unknown"
+
         else:
             sev = "unknown"
 
