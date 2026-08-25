@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 import pandas as pd
 import requests
 from dotenv import load_dotenv
@@ -14,17 +15,80 @@ from processing.validate import validate_rows
 from processing.taxonomy import categorize, severity, sector_hint
 from storage.repository import save_events, load_events
 
-
-
 # Load environment variables from .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 ABUSEIPDB_API_URL = "https://api.abuseipdb.com/api/v2/blacklist"
 
+# Offline sample dataset for fallback when no API key is provided or offline
+OFFLINE_SAMPLE_DATA = [
+    {
+        "ipAddress": "185.220.101.5",
+        "lastReportedAt": "2026-08-17T12:00:00+00:00",
+        "abuseConfidenceScore": 100,
+        "countryCode": "MA",
+    },
+    {
+        "ipAddress": "45.148.10.157",
+        "lastReportedAt": "2026-08-17T14:30:00+00:00",
+        "abuseConfidenceScore": 95,
+        "countryCode": "MA",
+    },
+    {
+        "ipAddress": "196.200.160.12",
+        "lastReportedAt": "2026-08-17T16:45:00+00:00",
+        "abuseConfidenceScore": 88,
+        "countryCode": "MA",
+    },
+    {
+        "ipAddress": "45.148.10.147",
+        "lastReportedAt": "2026-08-17T18:10:00+00:00",
+        "abuseConfidenceScore": 92,
+        "countryCode": "MA",
+    },
+]
+
+
+def get_abuseipdb_api_key() -> Optional[str]:
+    """Resolve AbuseIPDB API key from st.secrets, os.environ, or .streamlit/secrets.toml.
+
+    Returns:
+        Optional[str]: Valid API key string, or None if not found or placeholder.
+    """
+    # 1. Streamlit runtime secrets
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "abuseipdb" in st.secrets:
+            key = st.secrets["abuseipdb"].get("api_key")
+            if key and key.strip() and key not in ["your-key-here", "your_abuseipdb_api_key_here"]:
+                return key.strip()
+    except Exception:
+        pass
+
+    # 2. Environment variables / .env
+    env_key = os.getenv("ABUSEIPDB_API_KEY")
+    if env_key and env_key.strip() and env_key not in ["your_abuseipdb_api_key_here", "your-key-here"]:
+        return env_key.strip()
+
+    # 3. Direct secrets.toml parsing for standalone scripts (run_daily_collection.py)
+    secrets_path = BASE_DIR / ".streamlit" / "secrets.toml"
+    if secrets_path.exists():
+        try:
+            import tomllib
+            with open(secrets_path, "rb") as f:
+                secrets_data = tomllib.load(f)
+            key = secrets_data.get("abuseipdb", {}).get("api_key")
+            if key and key.strip() and key not in ["your-key-here", "your_abuseipdb_api_key_here"]:
+                return key.strip()
+        except Exception:
+            pass
+
+    return None
+
 
 def fetch_abuseipdb_feed(limit: int = 100) -> pd.DataFrame:
-    """Fetch blacklisted IP addresses from AbuseIPDB API v2.
+    """Fetch blacklisted IP addresses from AbuseIPDB API v2 with offline sample fallback.
 
     Args:
         limit: Maximum number of IP records to fetch.
@@ -32,30 +96,31 @@ def fetch_abuseipdb_feed(limit: int = 100) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Formatted DataFrame matching ThreatEvent schema.
     """
-    api_key = os.getenv("ABUSEIPDB_API_KEY")
-    if not api_key or api_key.strip() == "" or api_key == "your_abuseipdb_api_key_here":
-        print("[AbuseIPDB Error] Missing or unconfigured ABUSEIPDB_API_KEY in .env file.")
-        print("Please configure a valid AbuseIPDB API key in your local .env file.")
-        sys.exit(1)
+    api_key = get_abuseipdb_api_key()
+    data_list = []
 
-    headers = {
-        "Key": api_key,
-        "Accept": "application/json",
-        "User-Agent": "ObservatoirePMEMaroc/1.0 (CMRPI/EMC Internship)",
-    }
-    params = {"limit": limit}
+    if not api_key:
+        print("[AbuseIPDB Info] Aucune clé API configurée. Utilisation de l'échantillon hors ligne.")
+        data_list = OFFLINE_SAMPLE_DATA
+    else:
+        headers = {
+            "Key": api_key,
+            "Accept": "application/json",
+            "User-Agent": "ObservatoirePMEMaroc/1.0 (CMRPI/EMC Internship)",
+        }
+        params = {"limit": limit}
 
-    try:
-        resp = requests.get(ABUSEIPDB_API_URL, headers=headers, params=params, timeout=30)
-        resp.raise_for_status()
-        json_data = resp.json()
-    except requests.exceptions.RequestException as exc:
-        print(f"[AbuseIPDB Error] Failed to fetch feed from API: {exc}")
-        sys.exit(1)
+        try:
+            resp = requests.get(ABUSEIPDB_API_URL, headers=headers, params=params, timeout=30)
+            resp.raise_for_status()
+            json_data = resp.json()
+            data_list = json_data.get("data", [])
+        except requests.exceptions.RequestException as exc:
+            print(f"[AbuseIPDB Warning] Échec de requête API ({exc}). Utilisation de l'échantillon hors ligne.")
+            data_list = OFFLINE_SAMPLE_DATA
 
-    data_list = json_data.get("data", [])
     if not data_list:
-        print("[AbuseIPDB Warning] Empty dataset returned from API.")
+        print("[AbuseIPDB Warning] Empty dataset returned.")
         return pd.DataFrame()
 
     raw_df = pd.DataFrame(data_list)
@@ -96,8 +161,6 @@ def run_pipeline() -> None:
 
     print("[AbuseIPDB] Saving events to storage repository...")
     save_events(enriched_df)
-
-
 
     saved_events = load_events()
     print(f"\n[AbuseIPDB Pipeline Completed]")
