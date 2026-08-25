@@ -232,3 +232,73 @@ if search_query.strip():
     )
 
 filtered_df = df_raw[filter_mask].copy()
+
+# 6. Main content brand header
+header_col1, header_col2 = st.columns([1, 14])
+with header_col1:
+    if (Path(__file__).parent / "assets" / "logo.png").exists():
+        st.image("assets/logo.png", width=56)
+    else:
+        st.markdown("### :material/shield_person:")
+with header_col2:
+    st.markdown("## plUme")
+    st.caption("Observatoire de veille cyber pour les PME marocaines")
+st.divider()
+
+# 7. KPI Metrics Row
+col1, col2, col3, col4 = st.columns(4)
+
+total_unfiltered = len(df_raw)
+total_filtered = len(filtered_df)
+
+with col1:
+    if total_unfiltered > 0:
+        ratio = (total_filtered / total_unfiltered) * 100
+        delta_str = f"{ratio:.1f}% du total"
+    else:
+        delta_str = None
+
+    st.metric(
+        label="Total Événements",
+        value=f"{total_filtered:,}".replace(",", " "),
+        delta=delta_str,
+        delta_color="off" if total_filtered == total_unfiltered else "normal",
+    )
+
+with col2:
+    days_count = filtered_df["date"].nunique() if not filtered_df.empty else 0
+    st.metric(
+        label="Jours Couverts",
+        value=f"{days_count} j",
+    )
+
+with col3:
+    if not filtered_df.empty and not filtered_df["category"].empty:
+        top_cat = filtered_df["category"].value_counts().index[0]
+    else:
+        top_cat = "N/A"
+
+    st.metric(
+        label="Catégorie Principale",
+        value=top_cat,
+    )
+
+with col4:
+    if not filtered_df.empty and not filtered_df["source"].empty:
+        top_src = filtered_df["source"].value_counts().index[0]
+    else:
+        top_src = "N/A"
+
+    st.metric(
+        label="Source Principale",
+        value=top_src,
+    )
+
+# Neo-skeuomorphic style injection for KPI cards
+style_metric_cards(
+    background_color=COLORS["graphite"],
+    border_color=COLORS["border_glow"],
+    border_left_color=COLORS["ochre_500"],
+    box_shadow=True,
+)
+
