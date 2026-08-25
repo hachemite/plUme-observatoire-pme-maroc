@@ -477,3 +477,175 @@ with st.container(border=True):
     else:
         st.info("Aucune donnée de sévérité disponible pour cette sélection.")
 
+# 11. Section: Detailed Events Data Explorer (in container)
+with st.container(border=True):
+    st.subheader(":material/table_rows: Événements détaillés")
+
+    if not filtered_df.empty:
+        sorted_df = filtered_df.sort_values(by="parsed_datetime", ascending=False)
+
+        standard_columns = [
+            "event_id",
+            "source",
+            "date_added",
+            "indicator_type",
+            "indicator_value",
+            "raw_threat_tag",
+            "tags",
+            "country_code",
+            "status",
+            "category",
+            "severity",
+            "sector_hint",
+        ]
+        display_cols = [c for c in standard_columns if c in sorted_df.columns]
+        full_export_df = sorted_df[display_cols]
+
+        total_count = len(full_export_df)
+        capped_df = full_export_df.head(500)
+
+        # Caption & Export Button Bar
+        col_cap, col_exp = st.columns([3, 1])
+        with col_cap:
+            st.caption(f"{total_count:,} événements au total, 500 les plus récents affichés".replace(",", " "))
+
+        with col_exp:
+            csv_bytes = full_export_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="Télécharger (CSV)",
+                data=csv_bytes,
+                file_name="evenements_cybermenaces_filtres.csv",
+                mime="text/csv",
+                icon=":material/download:",
+                type="primary",
+            )
+
+        col_config = {
+            "event_id": st.column_config.TextColumn(
+                "ID Événement",
+                help="Identifiant unique de l'événement de menace.",
+            ),
+            "source": st.column_config.TextColumn(
+                "Source",
+                help="Flux de renseignement d'origine : URLhaus ou AbuseIPDB.",
+            ),
+            "date_added": st.column_config.TextColumn(
+                "Date d'ajout",
+                help="Horodatage UTC de la détection et enregistrement de l'indicateur.",
+            ),
+            "indicator_type": st.column_config.TextColumn(
+                "Type d'IoC",
+                help="Type d'indicateur de compromission (ex: url, ip).",
+            ),
+            "indicator_value": st.column_config.TextColumn(
+                "Indicateur (IoC)",
+                help="Valeur technique observable (URL suspecte, IP malveillante).",
+            ),
+            "raw_threat_tag": st.column_config.TextColumn(
+                "Tag brut",
+                help="Tag ou étiquette technique issue de la source primaire.",
+            ),
+            "tags": st.column_config.TextColumn(
+                "Tags",
+                help="Mots-clés décrivant le comportement ou la charge malveillante.",
+            ),
+            "country_code": st.column_config.TextColumn(
+                "Pays",
+                help="Code pays géographique associé à l'hôte.",
+            ),
+            "status": st.column_config.TextColumn(
+                "Statut",
+                help="État de disponibilité de l'indicateur au moment de la collecte.",
+            ),
+            "category": st.column_config.TextColumn(
+                "Catégorie",
+                help="Taxonomie AUSIM/CMRPI : ransomware_malware, phishing, ddos_extortion, web_attack.",
+            ),
+            "severity": st.column_config.TextColumn(
+                "Sévérité",
+                help="Niveau de criticité évalué : low, medium, high, critical, unknown.",
+            ),
+            "sector_hint": st.column_config.TextColumn(
+                "Secteur ciblé",
+                help="Indication sectorielle pour les PME marocaines.",
+            ),
+        }
+
+        # 11. Style dataframe with colored tags using pandas Styler
+        def style_severity(val):
+            colors = {
+                "low": SEVERITY_COLORS.get("low", "#f4c542"),
+                "medium": SEVERITY_COLORS.get("medium", "#e08d2e"),
+                "high": SEVERITY_COLORS.get("high", "#c2452e"),
+                "critical": SEVERITY_COLORS.get("critical", "#8b1e1e"),
+            }
+            color = colors.get(str(val).lower(), COLORS.get("cool_steel", "#a0a0a0"))
+            return f"background-color: {color}22; color: {color}; font-weight: 600; border-radius: 4px;"
+
+        def style_category(val):
+            cat_colors = {
+                "ransomware_malware": COLORS.get("ochre_500", "#db7c26"),
+                "ddos_extortion": COLORS.get("ochre_700", "#a85f1c"),
+                "phishing": COLORS.get("ochre_300", "#f0b374"),
+                "web_attack": COLORS.get("cool_steel", "#a0a0a0"),
+            }
+            color = cat_colors.get(str(val).lower(), COLORS.get("cool_steel", "#a0a0a0"))
+            return f"background-color: {color}22; color: {color}; font-weight: 600; border-radius: 4px;"
+
+        styled_df = (
+            capped_df.style
+            .map(style_severity, subset=["severity"])
+            .map(style_category, subset=["category"])
+        )
+
+        st.dataframe(
+            styled_df,
+            column_config=col_config,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # 12. Detail drill-down expander with native st.badge indicators
+        with st.expander("Voir un événement en détail"):
+            indicator_options = full_export_df["indicator_value"].dropna().unique().tolist()
+            if indicator_options:
+                selected_indicator = st.selectbox(
+                    "Sélectionner un indicateur pour inspecter ses détails :",
+                    options=indicator_options,
+                    index=0,
+                )
+                if selected_indicator:
+                    matching_event = full_export_df[full_export_df["indicator_value"] == selected_indicator]
+                    if not matching_event.empty:
+                        row = matching_event.iloc[0]
+
+                        # Native st.badge indicators
+                        b_col1, b_col2, b_col3, b_col4 = st.columns(4)
+                        with b_col1:
+                            sev_val = str(row.get("severity", "unknown")).lower()
+                            sev_color = "red" if sev_val == "critical" else "orange" if sev_val in ("high", "medium") else "yellow" if sev_val == "low" else "gray"
+                            st.markdown("**Sévérité :**")
+                            st.badge(str(row.get("severity", "unknown")).capitalize(), color=sev_color, icon=":material/warning:")
+
+                        with b_col2:
+                            cat_val = str(row.get("category", "unknown"))
+                            cat_color = "orange" if "ransomware" in cat_val else "yellow" if "phishing" in cat_val else "blue"
+                            st.markdown("**Catégorie :**")
+                            st.badge(cat_val, color=cat_color, icon=":material/category:")
+
+                        with b_col3:
+                            status_val = str(row.get("status", "unknown")).lower()
+                            status_color = "green" if status_val == "online" else "gray"
+                            st.markdown("**Statut :**")
+                            st.badge(status_val.capitalize(), color=status_color, icon=":material/wifi:" if status_val == "online" else ":material/wifi_off:")
+
+                        with b_col4:
+                            st.markdown("**Source :**")
+                            st.badge(str(row.get("source", "unknown")), color="primary", icon=":material/source:")
+
+                        st.divider()
+                        st.json(row.to_dict())
+            else:
+                st.info("Aucun indicateur disponible dans le jeu de données filtré.")
+    else:
+        st.info("Aucun événement détaillé disponible pour cette sélection.")
