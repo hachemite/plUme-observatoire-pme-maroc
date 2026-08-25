@@ -3,7 +3,7 @@
 > *"Voir le signal avant l'éruption."* / *"See the signal before the eruption."*
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-13%20passed-brightgreen.svg)](#5-exécution-des-tests-unitaires--running-tests)
+[![Tests](https://img.shields.io/badge/tests-14%20passed-brightgreen.svg)](#6-exécution-des-tests-unitaires--running-tests)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -13,14 +13,16 @@
   - [1. Présentation du Projet](#1-présentation-du-projet)
   - [2. Architecture & Structure](#2-architecture--structure-du-projet)
   - [3. Installation & Configuration](#3-installation--configuration)
-  - [4. Exécution des Pipelines](#4-exécution-des-collecteurs--pipelines)
-  - [5. Exécution des Tests](#5-exécution-des-tests-unitaires)
+  - [4. Lancement du Dashboard (Streamlit)](#4-lancement-du-dashboard-interactif-streamlit)
+  - [5. Exécution des Pipelines & Rapports](#5-exécution-des-collecteurs-pipelines--rapports)
+  - [6. Exécution des Tests](#6-exécution-des-tests-unitaires)
 - 🇬🇧 [English](#-english)
   - [1. Project Overview](#1-project-overview)
   - [2. Architecture & Structure](#2-architecture--project-structure)
   - [3. Setup & Installation](#3-setup--installation)
-  - [4. Running Pipelines](#4-running-collectors--pipelines)
-  - [5. Running Tests](#5-running-unit-tests)
+  - [4. Launching the Dashboard (Streamlit)](#4-launching-the-interactive-dashboard-streamlit)
+  - [5. Running Pipelines & Reports](#5-running-collectors-pipelines--reports)
+  - [6. Running Tests](#6-running-unit-tests)
 - 📊 [Qualité des Données / Data Metrics](#-qualité-des-données--data-quality-metrics)
 
 ---
@@ -39,12 +41,13 @@ observatoire-pme-maroc/
 ├── processing/          # Validation Pydantic (validate.py) & Taxonomie (taxonomy.py)
 ├── storage/             # Couche d'abstraction repository (repository.py)
 ├── analytics/           # Statistiques & agrégations (stats.py)
-├── reporting/           # Rapports sectoriels (rapport_pilote.py)
+├── reporting/           # Générateur de rapports CTI (rapport_pilote.py)
+├── reports/             # Rapports générés en Markdown
 ├── notebooks/           # Notebooks d'exploration & scripts (notebookv1.py)
-├── scripts/             # Scripts d'orchestration & utilitaires (run_daily_collection.py, build_notebook.py)
-├── tests/               # Tests unitaires Pytest (test_repository, test_taxonomy, test_stats, etc.)
-├── data/                # Stockage des données (threat_events.csv, daily_stats.csv)
-├── app.py               # Application Streamlit
+├── scripts/             # Orchestration & utilitaires (run_daily_collection.py, build_notebook.py)
+├── tests/               # Tests unitaires Pytest (test_reporting, test_repository, test_taxonomy, etc.)
+├── data/                # Données persistées (threat_events.csv, daily_stats.csv)
+├── app.py               # Dashboard interactif Streamlit
 └── requirements.txt     # Dépendances Python
 ```
 
@@ -77,7 +80,27 @@ cp .env.example .env
 # Éditer le fichier .env si vous disposez d'une clé API AbuseIPDB
 ```
 
-### 4. Exécution des Collecteurs & Pipelines
+### 4. Lancement du Dashboard Interactif (Streamlit)
+
+Pour explorer visuellement les indicateurs de menace, les ventilations taxonomiques et les alertes PME :
+
+```bash
+# Lancer l'application Streamlit
+streamlit run app.py
+```
+
+L'application s'ouvrira automatiquement dans votre navigateur à l'adresse **`http://localhost:8501`**.
+
+**Fonctionnalités du Dashboard :**
+- 📈 **KPIs globaux** : Volume d'événements, IoCs critiques, répartition par source et dates couvertes.
+- 🎯 **Filtres interactifs** : Période temporelle, catégories de menaces, niveaux de sévérité et sources.
+- 🇲🇦 **Focus PME Marocaines** : Détection des ciblages sectoriels (Bancaire, Gouvernemental `.gov.ma`, E-commerce).
+- 📊 **Visualisations dynamiques** : Évolution temporelle, répartition taxonomique, et tags fréquents.
+- 📥 **Export des données** : Téléchargement direct des événements filtrés au format CSV.
+
+---
+
+### 5. Exécution des Collecteurs, Pipelines & Rapports
 
 #### Collecte quotidienne automatisée
 ```bash
@@ -92,6 +115,13 @@ Pour planifier l'exécution quotidienne automatique chaque matin à 09:00 :
 schtasks /create /tn "PlumeDailyCollection" /tr "\"$(Get-Command python).Source\" \"C:\chemin\vers\repo\scripts\run_daily_collection.py\"" /sc daily /st 09:00
 ```
 *(Note : adapter le chemin absolu vers votre dépôt local).*
+
+#### Génération de rapports CTI (Markdown)
+```bash
+# Générer le rapport pilote Markdown basé sur les données actuelles
+python reporting/rapport_pilote.py
+```
+*(Le rapport sera automatiquement sauvegardé dans le dossier `reports/rapport_pilote_YYYY-MM-DD.md`).*
 
 #### Exécutions individuelles & utilitaires
 ```bash
@@ -108,15 +138,18 @@ python analytics/stats.py
 python scripts/build_notebook.py
 ```
 
-### 5. Exécution des Tests Unitaires
+---
 
-Le projet utilise **pytest** pour garantir la fiabilité des composants de validation, de taxonomie, de stockage et d'agrégation statistique.
+### 6. Exécution des Tests Unitaires
+
+Le projet utilise **pytest** pour garantir la fiabilité des composants de validation, de taxonomie, de stockage, de reporting et d'agrégation statistique.
 
 ```bash
-# Lancer tous les tests unitaires en mode verbeux (13 tests)
+# Lancer tous les tests unitaires en mode verbeux (14 tests)
 python -m pytest -v
 
 # Lancer un fichier de test spécifique
+python -m pytest tests/test_reporting.py -v
 python -m pytest tests/test_repository.py -v
 python -m pytest tests/test_taxonomy.py -v
 python -m pytest tests/test_validate.py -v
@@ -137,11 +170,13 @@ The project periodically ingests threat indicators (IoCs) from public threat fee
 - **`processing/`**: Data validation (`validate.py`) and taxonomy enrichment (`taxonomy.py`).
 - **`storage/`**: Load-bearing repository abstraction (`repository.py`) managing CSV read/write and deduplication.
 - **`analytics/`**: Aggregations and statistical metrics (`stats.py`).
-- **`reporting/`**: Sectoral report generator (`rapport_pilote.py`).
+- **`reporting/`**: Sectoral intelligence report generator (`rapport_pilote.py`).
+- **`reports/`**: Generated Markdown reports.
 - **`scripts/`**: Orchestration and utility scripts (`run_daily_collection.py`, `build_notebook.py`).
 - **`data/`**: Ingested threat events and daily statistics (`threat_events.csv`, `daily_stats.csv`).
 - **`tests/`**: Unit test suite powered by `pytest`.
 - **`app.py`**: Interactive Streamlit dashboard.
+- **`requirements.txt`**: Python dependencies.
 
 ### 3. Setup & Installation
 
@@ -171,7 +206,27 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 4. Running Collectors & Pipelines
+### 4. Launching the Interactive Dashboard (Streamlit)
+
+To launch the web interface and explore cyber threat telemetry:
+
+```bash
+# Launch Streamlit dashboard
+streamlit run app.py
+```
+
+Access the dashboard at **`http://localhost:8501`**.
+
+**Dashboard Features:**
+- 📈 **Executive KPIs**: Real-time total events, critical IoCs, data completeness, and source splits.
+- 🎯 **Multi-criteria Filtering**: Filter by date range, taxonomy category, severity level, and data feed.
+- 🇲🇦 **Moroccan SME Intelligence**: Automated identification of targets (.gov.ma, Moroccan banking, local e-commerce).
+- 📊 **Dynamic Visualizations**: Temporal timeline, categorical breakdowns, and top indicator tags.
+- 📥 **Data Export**: Filter and export datasets directly to CSV.
+
+---
+
+### 5. Running Collectors, Pipelines & Reports
 
 #### Daily automated collection
 ```bash
@@ -186,6 +241,13 @@ To schedule an automated daily run at 09:00:
 schtasks /create /tn "PlumeDailyCollection" /tr "\"$(Get-Command python).Source\" \"C:\path\to\repo\scripts\run_daily_collection.py\"" /sc daily /st 09:00
 ```
 *(Note: adjust the absolute path to match your local repository).*
+
+#### Generating CTI Intelligence Reports (Markdown)
+```bash
+# Generate the automated pilot report in Markdown
+python reporting/rapport_pilote.py
+```
+*(Saved to `reports/rapport_pilote_YYYY-MM-DD.md`).*
 
 #### Standalone & utility executions
 ```bash
@@ -202,15 +264,18 @@ python analytics/stats.py
 python scripts/build_notebook.py
 ```
 
-### 5. Running Unit Tests
+---
 
-The test suite ensures data validation, taxonomy mapping, repository storage, and statistical aggregation integrity.
+### 6. Running Unit Tests
+
+The test suite ensures data validation, taxonomy mapping, repository storage, reporting, and statistical aggregation integrity.
 
 ```bash
-# Run all unit tests (13 tests)
+# Run all unit tests (14 tests)
 python -m pytest -v
 
 # Run specific test modules
+python -m pytest tests/test_reporting.py -v
 python -m pytest tests/test_repository.py -v
 python -m pytest tests/test_taxonomy.py -v
 python -m pytest tests/test_validate.py -v
