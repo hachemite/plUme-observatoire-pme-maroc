@@ -99,3 +99,136 @@ def get_data() -> pd.DataFrame:
 df_raw = get_data()
 
 # 4. Sidebar setup & filter controls
+if LOGO_B64:
+    sidebar_brand_html = (
+        f'<div style="display:flex;align-items:center;gap:10px;padding:4px 0 10px 0;">'
+        f'<img src="data:image/png;base64,{LOGO_B64}" width="28" height="28" style="object-fit:contain;vertical-align:middle;" />'
+        f'<span class="sidebar-brand-text" style="font-weight:600;font-size:1.2rem;letter-spacing:-0.02em;">plUme</span>'
+        f'</div>'
+    )
+else:
+    sidebar_brand_html = (
+        '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;">'
+        '<span style="font-size:1.5rem;">🛡️</span>'
+        '<span class="sidebar-brand-text" style="font-weight:600;">plUme</span>'
+        '</div>'
+    )
+
+st.sidebar.markdown(
+    sidebar_brand_html,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.markdown("### :material/tune: Filtres")
+
+# Text search filter for indicator_value (IP / domain / URL)
+search_query = st.sidebar.text_input(
+    "Recherche IoC (IP, domaine, URL)",
+    placeholder="Ex: 182.122, .online, mozi...",
+)
+
+# Date range extraction
+valid_dates = df_raw["date"].dropna()
+if not valid_dates.empty:
+    min_date = valid_dates.min()
+    max_date = valid_dates.max()
+else:
+    min_date = date.today()
+    max_date = date.today()
+
+selected_dates = st.sidebar.date_input(
+    "Période d'analyse",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date,
+    format="YYYY-MM-DD",
+)
+
+# Robust date selection handling
+if isinstance(selected_dates, (tuple, list)):
+    if len(selected_dates) == 2:
+        start_date, end_date = selected_dates
+    elif len(selected_dates) == 1:
+        start_date = end_date = selected_dates[0]
+    else:
+        start_date, end_date = min_date, max_date
+else:
+    start_date = end_date = selected_dates
+
+# Source multiselect
+available_sources = sorted(df_raw["source"].dropna().unique().tolist())
+selected_sources = st.sidebar.multiselect(
+    "Source",
+    options=available_sources,
+    default=available_sources,
+)
+
+# Category multiselect
+available_categories = sorted(df_raw["category"].dropna().unique().tolist())
+selected_categories = st.sidebar.multiselect(
+    "Catégorie",
+    options=available_categories,
+    default=available_categories,
+)
+
+# Indicator type multiselect
+available_indicator_types = sorted(df_raw["indicator_type"].dropna().unique().tolist())
+selected_indicator_types = st.sidebar.multiselect(
+    "Type d'indicateur",
+    options=available_indicator_types,
+    default=available_indicator_types,
+)
+
+# Status multiselect (default: active threats only, e.g. 'online')
+available_statuses = sorted(df_raw["status"].dropna().unique().tolist())
+default_statuses = [s for s in available_statuses if s in ["online", "active"]]
+if not default_statuses:
+    default_statuses = available_statuses
+
+selected_statuses = st.sidebar.multiselect(
+    "Statut de l'indicateur",
+    options=available_statuses,
+    default=default_statuses,
+    help="Par défaut filtré sur les menaces actives ('online'). Cochez 'offline' pour inclure l'historique.",
+)
+
+# Sector hint multiselect (PME Maroc targeting)
+available_sectors = sorted(df_raw["sector_hint"].dropna().unique().tolist())
+selected_sectors = st.sidebar.multiselect(
+    "Secteur ciblé (PME)",
+    options=available_sectors,
+    default=available_sectors,
+    help="Indication du secteur d'activité ciblé dans le contexte des PME marocaines.",
+)
+
+# Refresh button
+if st.sidebar.button("Actualiser", icon=":material/refresh:", type="primary"):
+    st.cache_data.clear()
+    st.rerun()
+
+# Sidebar footer metadata & API key status
+latest_date_str = max_date.strftime("%Y-%m-%d") if isinstance(max_date, date) else str(max_date)
+st.sidebar.caption(f":material/schedule: Dernière mise à jour : {latest_date_str}")
+
+if get_abuseipdb_api_key():
+    st.sidebar.success("AbuseIPDB : clé API active", icon=":material/check_circle:")
+else:
+    st.sidebar.warning("AbuseIPDB : mode hors ligne (aucune clé API)", icon=":material/cloud_off:")
+
+# 5. Single-step filtering
+filter_mask = (
+    (df_raw["date"] >= start_date)
+    & (df_raw["date"] <= end_date)
+    & (df_raw["source"].isin(selected_sources))
+    & (df_raw["category"].isin(selected_categories))
+    & (df_raw["indicator_type"].isin(selected_indicator_types))
+    & (df_raw["status"].isin(selected_statuses))
+    & (df_raw["sector_hint"].isin(selected_sectors))
+)
+
+if search_query.strip():
+    filter_mask &= df_raw["indicator_value"].str.contains(
+        search_query.strip(), case=False, regex=False, na=False
+    )
+
+filtered_df = df_raw[filter_mask].copy()
