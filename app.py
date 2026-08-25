@@ -302,3 +302,178 @@ style_metric_cards(
     box_shadow=True,
 )
 
+st.divider()
+
+# 8. Section: Volume Evolution Line Chart (with Daily / Weekly toggle in container)
+with st.container(border=True):
+    vol_head_col, vol_toggle_col = st.columns([3, 1])
+
+    with vol_head_col:
+        st.subheader(":material/trending_up: Évolution du volume")
+
+    with vol_toggle_col:
+        granularity = st.radio(
+            "Granularité",
+            options=["Quotidienne", "Hebdomadaire"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+
+    if not filtered_df.empty:
+        if granularity == "Hebdomadaire":
+            valid_time_df = filtered_df.dropna(subset=["parsed_datetime"]).copy()
+            if not valid_time_df.empty:
+                weekly_volume = (
+                    valid_time_df.set_index("parsed_datetime")
+                    .resample("W-SUN")
+                    .size()
+                    .rename("Événements")
+                )
+                weekly_volume.index = weekly_volume.index.strftime("%Y-%m-%d")
+                st.line_chart(
+                    weekly_volume,
+                    x_label="Semaine (finissant le)",
+                    y_label="Nombre d'événements",
+                )
+            else:
+                st.info("Aucune donnée temporelle valide pour l'agrégation hebdomadaire.", icon=":material/info:")
+        else:
+            stats_df = compute_daily_stats(filtered_df)
+            if not stats_df.empty:
+                daily_volume = stats_df.groupby("date")["count"].sum()
+                st.line_chart(
+                    daily_volume,
+                    x_label="Date",
+                    y_label="Nombre d'événements",
+                )
+            else:
+                st.info("Aucune statistique journalière calculable pour les données sélectionnées.", icon=":material/info:")
+    else:
+        st.info("Aucun événement à afficher pour les filtres sélectionnés.", icon=":material/info:")
+
+# 9. Section: Threat Breakdowns & Top Offenders (in container)
+with st.container(border=True):
+    st.subheader(":material/analytics: Répartition des menaces")
+    chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+    with chart_col1:
+        st.markdown("#### :material/source: Par source")
+        if not filtered_df.empty and "source" in filtered_df.columns:
+            source_counts = filtered_df["source"].value_counts()
+            st.bar_chart(source_counts, x_label="Source", y_label="Événements")
+        else:
+            st.info("Aucune donnée de source disponible.")
+
+    with chart_col2:
+        st.markdown("#### :material/category: Par catégorie")
+        if not filtered_df.empty and "category" in filtered_df.columns:
+            category_counts = filtered_df["category"].value_counts()
+            st.bar_chart(category_counts, x_label="Catégorie", y_label="Événements")
+        else:
+            st.info("Aucune donnée de catégorie disponible.")
+
+    with chart_col3:
+        st.markdown("#### :material/domain: Par secteur ciblé (PME)")
+        if not filtered_df.empty and "sector_hint" in filtered_df.columns:
+            sector_counts = filtered_df["sector_hint"].value_counts()
+            st.bar_chart(sector_counts, x_label="Secteur", y_label="Événements")
+        else:
+            st.info("Aucune donnée sectorielle disponible.")
+
+    st.markdown("#### :material/priority_high: Top 10 des indicateurs récurrents")
+    st.caption("Indicateurs (IoC) les plus fréquemment observés sur plusieurs collectes — signal fort de persistance.")
+
+    if not filtered_df.empty and "indicator_value" in filtered_df.columns:
+        top_offenders = (
+            filtered_df.groupby("indicator_value")
+            .agg(
+                occurrences=("indicator_value", "count"),
+                type=("indicator_type", "first"),
+                category=("category", "first"),
+                severity=("severity", "first"),
+            )
+            .reset_index()
+            .sort_values(by="occurrences", ascending=False)
+            .head(10)
+        )
+
+        top_config = {
+            "indicator_value": st.column_config.TextColumn(
+                "Indicateur (IoC)",
+                help="Valeur technique observable répétée dans les flux.",
+            ),
+            "type": st.column_config.TextColumn(
+                "Type",
+                help="Type d'IoC (IP, URL).",
+            ),
+            "category": st.column_config.TextColumn(
+                "Catégorie",
+                help="Classification de menace AUSIM/CMRPI.",
+            ),
+            "severity": st.column_config.TextColumn(
+                "Sévérité",
+                help="Niveau de criticité évalué.",
+            ),
+            "occurrences": st.column_config.ProgressColumn(
+                "Occurrences",
+                help="Nombre total d'apparitions de cet indicateur.",
+                format="%d",
+                min_value=0,
+                max_value=int(top_offenders["occurrences"].max()) if not top_offenders.empty else 10,
+            ),
+        }
+
+        st.dataframe(
+            top_offenders,
+            column_config=top_config,
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("Aucun indicateur disponible pour identifier les récurrences.")
+
+# 10. Section: Severity Distribution View (in container)
+with st.container(border=True):
+    st.subheader(":material/warning: Distribution par sévérité")
+
+    if not filtered_df.empty and "severity" in filtered_df.columns:
+        severity_counts = filtered_df["severity"].value_counts()
+
+        severity_order = ["low", "medium", "high", "critical", "unknown"]
+        active_severities = [s for s in severity_order if s in severity_counts.index or s in ["low", "medium", "high", "critical"]]
+
+        sev_cols = st.columns(len(active_severities))
+        for idx, sev_key in enumerate(active_severities):
+            count = int(severity_counts.get(sev_key, 0))
+            pct = (count / total_filtered * 100) if total_filtered > 0 else 0.0
+            color = SEVERITY_COLORS.get(sev_key, COLORS["cool_steel"])
+            label = SEVERITY_LABELS.get(sev_key, sev_key.capitalize())
+
+            with sev_cols[idx]:
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color: {COLORS['graphite']};
+                        border: 1px solid rgba(255, 255, 255, 0.08);
+                        border-left: 5px solid {color};
+                        border-radius: 0.75rem;
+                        padding: 14px 16px;
+                        margin-bottom: 12px;
+                        box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 12px rgba(0,0,0,0.4);
+                    ">
+                        <div style="font-size: 0.8rem; color: {COLORS['cool_steel']}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            {label}
+                        </div>
+                        <div style="font-size: 1.6rem; font-weight: 700; color: {COLORS['white']}; margin-top: 4px;">
+                            {count:,}
+                        </div>
+                        <div style="font-size: 0.85rem; color: {color}; font-weight: 600; margin-top: 2px;">
+                            {pct:.1f}% des menaces
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.info("Aucune donnée de sévérité disponible pour cette sélection.")
+
