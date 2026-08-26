@@ -16,6 +16,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from analytics.anomaly import compute_rolling_zscore
+from analytics.correlate import tag_cross_source_confirmed
+from analytics.risk_score import compute_risk_score
 from analytics.stats import compute_daily_stats
 from collectors.abuseipdb import get_abuseipdb_api_key
 from reporting.recommendations import (
@@ -149,20 +151,28 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
         pct = (cnt / total_events) * 100
         sev_rows.append({"severity": sev, "count": f"{cnt:,}".replace(",", " "), "pct": f"{pct:.2f}%"})
 
-    # Top 10 indicators
-    top10_df = (
-        df.groupby("indicator_value")
+    # 4. Direct aggregations & Risk Scoring
+    df_tagged = tag_cross_source_confirmed(df)
+
+    # Top 10 indicators ranked by risk score
+    indicator_agg = (
+        df_tagged.groupby("indicator_value")
         .agg(
             occurrences=("indicator_value", "count"),
             type=("indicator_type", "first"),
             category=("category", "first"),
             severity=("severity", "first"),
             source=("source", "first"),
+            cross_source_confirmed=("cross_source_confirmed", "max"),
         )
         .reset_index()
-        .sort_values(by=["occurrences", "indicator_value"], ascending=[False, True])
-        .head(10)
     )
+    indicator_agg["risk_score"] = indicator_agg.apply(compute_risk_score, axis=1)
+
+    top10_df = indicator_agg.sort_values(
+        by=["risk_score", "occurrences", "indicator_value"],
+        ascending=[False, False, True],
+    ).head(10)
 
     # 5. API Status check
     has_abuseipdb_key = bool(get_abuseipdb_api_key())
@@ -224,14 +234,15 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     md.append("### Par secteur ciblé")
     md.append("Le champ sector_hint est renseigné pour seulement 0.22% des événements (ecommerce: 57, banking: 6, government: 0) — les flux techniques bruts ne comportent pas de ciblage sectoriel explicite ; cette dimension n'est pas exploitable dans ce rapport pilote.\n")
 
-    # 5. Top 10 des indicateurs récurrents
-    md.append("## 4. Top 10 des indicateurs récurrents")
-    md.append("| Indicateur (IoC) | Type | Catégorie | Sévérité | Source | Occurrences |")
-    md.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
+    # 5. Top 10 des indicateurs prioritaires par score de risque
+    md.append("## 4. Top 10 des indicateurs prioritaires (par score de risque)")
+    md.append("| Indicateur (IoC) | Type | Catégorie | Sévérité | Source | Occurrences | Corroboré | Score de risque |")
+    md.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     for _, r in top10_df.iterrows():
-        md.append(f"| `{r['indicator_value']}` | {r['type']} | `{r['category']}` | `{r['severity']}` | `{r['source']}` | {r['occurrences']} |")
+        confirmed_str = "Oui" if bool(r.get("cross_source_confirmed", False)) else "Non"
+        md.append(f"| `{r['indicator_value']}` | {r['type']} | `{r['category']}` | `{r['severity']}` | `{r['source']}` | {r['occurrences']} | {confirmed_str} | **{r['risk_score']:.1f}** |")
     md.append("")
-    md.append("Les indicateurs récurrents proviennent exclusivement d'AbuseIPDB (IP signalées à plusieurs reprises) ; les URLs URLhaus sont quasi-uniques et n'apparaissent pas dans ce classement.\n")
+    md.append("Le classement est calculé selon un score de risque composite (40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie). L'adresse `45.148.10.157` reste en tête (score 68.0), tandis que les adresses `91.92.40.5` et `94.154.43.146` (score 64.0) grimpent aux rangs #2 et #3 en raison de leur corroboration simultanée sur URLhaus et AbuseIPDB.\n")
 
     # 6. Distribution par sévérité
     md.append("## 5. Distribution par sévérité")

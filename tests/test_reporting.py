@@ -20,7 +20,7 @@ def test_generate_pilot_report_creates_file():
         assert "## 1. Résumé" in content
         assert "## 2. Volume et tendance" in content
         assert "## 3. Répartition par source, catégorie et secteur" in content
-        assert "## 4. Top 10 des indicateurs récurrents" in content
+        assert "## 4. Top 10 des indicateurs" in content
         assert "## 5. Distribution par sévérité" in content
         assert "## 6. Recommandations PME" in content
         assert "## 7. Observations" in content

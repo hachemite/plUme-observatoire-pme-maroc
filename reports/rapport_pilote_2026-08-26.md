@@ -44,21 +44,21 @@ Détection d'anomalie (z-score glissant sur 4 semaines, seuil 2σ) : le pic de l
 ### Par secteur ciblé
 Le champ sector_hint est renseigné pour seulement 0.22% des événements (ecommerce: 57, banking: 6, government: 0) — les flux techniques bruts ne comportent pas de ciblage sectoriel explicite ; cette dimension n'est pas exploitable dans ce rapport pilote.
 
-## 4. Top 10 des indicateurs récurrents
-| Indicateur (IoC) | Type | Catégorie | Sévérité | Source | Occurrences |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `45.148.10.157` | ip | `ddos_extortion` | `high` | `abuseipdb` | 5 |
-| `45.148.10.147` | ip | `ddos_extortion` | `high` | `abuseipdb` | 4 |
-| `45.148.10.152` | ip | `ddos_extortion` | `high` | `abuseipdb` | 3 |
-| `102.210.148.92` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `103.143.231.24` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `103.155.47.50` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `103.204.167.40` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `104.28.222.16` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `107.189.28.96` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
-| `173.249.52.138` | ip | `ddos_extortion` | `high` | `abuseipdb` | 2 |
+## 4. Top 10 des indicateurs prioritaires (par score de risque)
+| Indicateur (IoC) | Type | Catégorie | Sévérité | Source | Occurrences | Corroboré | Score de risque |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `45.148.10.157` | ip | `ddos_extortion` | `high` | `abuseipdb` | 5 | Non | **68.0** |
+| `91.92.40.5` | ip | `ddos_extortion` | `high` | `abuseipdb` | 1 | Oui | **64.0** |
+| `94.154.43.146` | ip | `ddos_extortion` | `high` | `abuseipdb` | 1 | Oui | **64.0** |
+| `45.148.10.147` | ip | `ddos_extortion` | `high` | `abuseipdb` | 4 | Non | **62.0** |
+| `45.148.10.152` | ip | `ddos_extortion` | `high` | `abuseipdb` | 3 | Non | **56.0** |
+| `http://91.92.40.5/release/x86_64` | url | `ransomware_malware` | `medium` | `urlhaus` | 1 | Oui | **56.0** |
+| `http://94.154.43.146/arm4` | url | `ransomware_malware` | `medium` | `urlhaus` | 1 | Oui | **56.0** |
+| `http://94.154.43.146/arm5` | url | `ransomware_malware` | `medium` | `urlhaus` | 1 | Oui | **56.0** |
+| `http://94.154.43.146/arm6` | url | `ransomware_malware` | `medium` | `urlhaus` | 1 | Oui | **56.0** |
+| `http://94.154.43.146/arm7` | url | `ransomware_malware` | `medium` | `urlhaus` | 1 | Oui | **56.0** |
 
-Les indicateurs récurrents proviennent exclusivement d'AbuseIPDB (IP signalées à plusieurs reprises) ; les URLs URLhaus sont quasi-uniques et n'apparaissent pas dans ce classement.
+Le classement est calculé selon un score de risque composite (40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie). L'adresse `45.148.10.157` reste en tête (score 68.0), tandis que les adresses `91.92.40.5` et `94.154.43.146` (score 64.0) grimpent aux rangs #2 et #3 en raison de leur corroboration simultanée sur URLhaus et AbuseIPDB.
 
 ## 5. Distribution par sévérité
 | Sévérité | Libellé | Volume | Part (%) |

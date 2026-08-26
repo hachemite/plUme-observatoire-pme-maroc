@@ -16,6 +16,8 @@ except ImportError:
         """Fallback no-op when streamlit_extras is not installed."""
         pass
 
+from analytics.correlate import tag_cross_source_confirmed
+from analytics.risk_score import score_indicators_dataframe
 from analytics.stats import compute_daily_stats, load_events
 from collectors.abuseipdb import get_abuseipdb_api_key
 from theme_tokens import COLORS, SEVERITY_COLORS, SEVERITY_LABELS
@@ -80,7 +82,7 @@ def get_data() -> pd.DataFrame:
     """Load and preprocess threat events from the storage layer with caching.
 
     Returns:
-        pd.DataFrame: Threat events with parsed datetime and date columns.
+        pd.DataFrame: Threat events with parsed datetime, cross-source confirmation, and risk scores.
     """
     df = load_events()
     if not df.empty and "date_added" in df.columns:
@@ -90,9 +92,13 @@ def get_data() -> pd.DataFrame:
         df = df.copy()
         df["parsed_datetime"] = parsed_dates
         df["date"] = parsed_dates.dt.date
+        df = tag_cross_source_confirmed(df)
+        df = score_indicators_dataframe(df)
     else:
         df["parsed_datetime"] = pd.Series(dtype="datetime64[ns, UTC]")
         df["date"] = pd.Series(dtype="object")
+        df["cross_source_confirmed"] = pd.Series(dtype=bool)
+        df["risk_score"] = pd.Series(dtype=float)
     return df
 
 
@@ -380,27 +386,34 @@ with st.container(border=True):
         else:
             st.info("Aucune donnée sectorielle disponible.")
 
-    st.markdown("#### :material/priority_high: Top 10 des indicateurs récurrents")
-    st.caption("Indicateurs (IoC) les plus fréquemment observés sur plusieurs collectes — signal fort de persistance.")
+    st.markdown("#### :material/priority_high: Top 10 des indicateurs prioritaires (par score de risque)")
+    st.caption("Indicateurs classés selon le score composite de risque (gravité, récurrence, corrélation multi-sources et catégorie).")
 
     if not filtered_df.empty and "indicator_value" in filtered_df.columns:
         top_offenders = (
             filtered_df.groupby("indicator_value")
             .agg(
+                risk_score=("risk_score", "max"),
                 occurrences=("indicator_value", "count"),
                 type=("indicator_type", "first"),
                 category=("category", "first"),
                 severity=("severity", "first"),
+                cross_source_confirmed=("cross_source_confirmed", "max"),
             )
             .reset_index()
-            .sort_values(by="occurrences", ascending=False)
+            .sort_values(by=["risk_score", "occurrences", "indicator_value"], ascending=[False, False, True])
             .head(10)
         )
 
         top_config = {
+            "risk_score": st.column_config.NumberColumn(
+                "Score de risque",
+                help="Score composite (0-100) : 40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie.",
+                format="%.1f",
+            ),
             "indicator_value": st.column_config.TextColumn(
                 "Indicateur (IoC)",
-                help="Valeur technique observable répétée dans les flux.",
+                help="Valeur technique observable dans les flux.",
             ),
             "type": st.column_config.TextColumn(
                 "Type",
@@ -414,6 +427,10 @@ with st.container(border=True):
                 "Sévérité",
                 help="Niveau de criticité évalué.",
             ),
+            "cross_source_confirmed": st.column_config.CheckboxColumn(
+                "Corroboré",
+                help="Indique si l'indicateur est corroboré simultanément sur URLhaus et AbuseIPDB.",
+            ),
             "occurrences": st.column_config.ProgressColumn(
                 "Occurrences",
                 help="Nombre total d'apparitions de cet indicateur.",
@@ -423,8 +440,29 @@ with st.container(border=True):
             ),
         }
 
+        # Apply severity and risk styling
+        def style_risk_score(val):
+            try:
+                num = float(val)
+            except (ValueError, TypeError):
+                return ""
+            if num >= 65.0:
+                color = SEVERITY_COLORS.get("high", "#c2452e")
+            elif num >= 50.0:
+                color = SEVERITY_COLORS.get("medium", "#e08d2e")
+            elif num >= 25.0:
+                color = SEVERITY_COLORS.get("low", "#f4c542")
+            else:
+                color = COLORS.get("cool_steel", "#a0a0a0")
+            return f"background-color: {color}22; color: {color}; font-weight: 700; border-radius: 4px;"
+
+        styled_top = (
+            top_offenders.style
+            .map(style_risk_score, subset=["risk_score"])
+        )
+
         st.dataframe(
-            top_offenders,
+            styled_top,
             column_config=top_config,
             use_container_width=True,
             hide_index=True,
@@ -485,6 +523,7 @@ with st.container(border=True):
         sorted_df = filtered_df.sort_values(by="parsed_datetime", ascending=False)
 
         standard_columns = [
+            "risk_score",
             "event_id",
             "source",
             "date_added",
@@ -496,6 +535,7 @@ with st.container(border=True):
             "status",
             "category",
             "severity",
+            "cross_source_confirmed",
             "sector_hint",
         ]
         display_cols = [c for c in standard_columns if c in sorted_df.columns]
@@ -521,6 +561,11 @@ with st.container(border=True):
             )
 
         col_config = {
+            "risk_score": st.column_config.NumberColumn(
+                "Score de risque",
+                help="Score composite (0-100) : 40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie.",
+                format="%.1f",
+            ),
             "event_id": st.column_config.TextColumn(
                 "ID Événement",
                 help="Identifiant unique de l'événement de menace.",
@@ -565,6 +610,10 @@ with st.container(border=True):
                 "Sévérité",
                 help="Niveau de criticité évalué : low, medium, high, critical, unknown.",
             ),
+            "cross_source_confirmed": st.column_config.CheckboxColumn(
+                "Corroboré",
+                help="Indique si l'indicateur est corroboré simultanément sur URLhaus et AbuseIPDB.",
+            ),
             "sector_hint": st.column_config.TextColumn(
                 "Secteur ciblé",
                 help="Indication sectorielle pour les PME marocaines.",
@@ -592,10 +641,26 @@ with st.container(border=True):
             color = cat_colors.get(str(val).lower(), COLORS.get("cool_steel", "#a0a0a0"))
             return f"background-color: {color}22; color: {color}; font-weight: 600; border-radius: 4px;"
 
+        def style_risk_score(val):
+            try:
+                num = float(val)
+            except (ValueError, TypeError):
+                return ""
+            if num >= 65.0:
+                color = SEVERITY_COLORS.get("high", "#c2452e")
+            elif num >= 50.0:
+                color = SEVERITY_COLORS.get("medium", "#e08d2e")
+            elif num >= 25.0:
+                color = SEVERITY_COLORS.get("low", "#f4c542")
+            else:
+                color = COLORS.get("cool_steel", "#a0a0a0")
+            return f"background-color: {color}22; color: {color}; font-weight: 700; border-radius: 4px;"
+
         styled_df = (
             capped_df.style
             .map(style_severity, subset=["severity"])
             .map(style_category, subset=["category"])
+            .map(style_risk_score, subset=["risk_score"])
         )
 
         st.dataframe(
@@ -604,6 +669,8 @@ with st.container(border=True):
             use_container_width=True,
             hide_index=True,
         )
+
+        st.caption("ℹ️ **Méthodologie du score de risque** : Le score (0 à 100) pondère la sévérité d'impact (40%), la récurrence de l'indicateur (30%), la corroboration croisée multi-sources (20%) et la dangerosité de la catégorie de menace (10%).")
 
         # 12. Detail drill-down expander with native st.badge indicators
         with st.expander("Voir un événement en détail"):
