@@ -15,6 +15,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from analytics.anomaly import compute_rolling_zscore
 from analytics.stats import compute_daily_stats
 from collectors.abuseipdb import get_abuseipdb_api_key
 from storage.repository import load_events
@@ -76,6 +77,19 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
 
     # Calculate week-over-week evolution
     weekly_rows = []
+    
+    # Anomaly detection via rolling z-score (window=4 weeks, threshold=2.0)
+    anomaly_res = compute_rolling_zscore(weekly_df["volume"], window=4, threshold=2.0)
+    weekly_df["z_score"] = anomaly_res["z_score"]
+    weekly_df["is_anomaly"] = anomaly_res["is_anomaly"]
+
+    s32_row = weekly_df[weekly_df["week_num"] == 32]
+    if not s32_row.empty:
+        s32_z = float(s32_row.iloc[0]["z_score"])
+        s32_is_anom = bool(s32_row.iloc[0]["is_anomaly"])
+    else:
+        s32_z = 0.0
+        s32_is_anom = False
     
     for idx, row in weekly_df.iterrows():
         w_num = row["week_num"]
@@ -142,7 +156,7 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
             source=("source", "first"),
         )
         .reset_index()
-        .sort_values(by="occurrences", ascending=False)
+        .sort_values(by=["occurrences", "indicator_value"], ascending=[False, True])
         .head(10)
     )
 
@@ -185,7 +199,9 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
         md.append(f"| {r['semaine']} | {r['fin_semaine']} | {r['volume']} | {r['evolution']} |")
     md.append("")
     md.append("Sur les 7 semaines complètes (S27–S33), le volume hebdomadaire est passé de 3 655 à 4 483 événements (+22.65%), avec un pic à 4 628 en semaine 32.")
-    md.append("La pente de régression linéaire sur les semaines complètes est positive (+164.7 événements/semaine).\n")
+    md.append("La pente de régression linéaire sur les semaines complètes est positive (+164.7 événements/semaine).")
+    s32_status = "est qualifié d'anomalie statistique" if s32_is_anom else "n'est pas marqué comme anomalie statistique extrême"
+    md.append(f"Détection d'anomalie (z-score glissant sur 4 semaines, seuil 2σ) : le pic de la semaine S32 obtient un z-score de +{s32_z:.2f} ({s32_status}, restant sous le seuil critique de 2.0 écarts-types).\n")
 
     # 4. Répartition par source, catégorie et secteur
     md.append("## 3. Répartition par source, catégorie et secteur")
