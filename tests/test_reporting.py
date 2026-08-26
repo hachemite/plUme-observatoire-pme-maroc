@@ -22,8 +22,9 @@ def test_generate_pilot_report_creates_file():
         assert "## 3. Répartition par source, catégorie et secteur" in content
         assert "## 4. Top 10 des indicateurs récurrents" in content
         assert "## 5. Distribution par sévérité" in content
-        assert "## 6. Observations" in content
-        assert "## 7. Méthodologie et limites" in content
+        assert "## 6. Recommandations PME" in content
+        assert "## 7. Observations" in content
+        assert "## 8. Méthodologie et limites" in content
         assert "28 656" in content
         assert "urlhaus" in content
         assert "abuseipdb" in content

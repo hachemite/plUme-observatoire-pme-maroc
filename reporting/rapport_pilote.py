@@ -18,6 +18,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from analytics.anomaly import compute_rolling_zscore
 from analytics.stats import compute_daily_stats
 from collectors.abuseipdb import get_abuseipdb_api_key
+from reporting.recommendations import (
+    extract_top_tags_from_dataframe,
+    get_recommendations_for_tags,
+)
 from storage.repository import load_events
 
 REPORTS_DIR = PROJECT_ROOT / "reports"
@@ -246,14 +250,34 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     md.append("")
     md.append("Aucun événement n'est classé 'critical' dans le jeu de données actuel — la taxonomie place les menaces les plus sévères observées (adresses IP AbuseIPDB liées au DDoS/extorsion) au niveau 'high'.\n")
 
-    # 7. Observations
-    md.append("## 6. Observations")
+    # 7. Prescriptive PME Recommendations based on dominant threat tags
+    dominant_tags = extract_top_tags_from_dataframe(df, top_n=8)
+    top10_tags = []
+    if "tags" in df.columns:
+        for _, row in top10_df.iterrows():
+            ioc = row["indicator_value"]
+            ioc_tags = df[df["indicator_value"] == ioc]["tags"].dropna().tolist()
+            top10_tags.extend(ioc_tags)
+    
+    evaluated_tags = dominant_tags + top10_tags
+    recommendations_list = get_recommendations_for_tags(evaluated_tags)
+
+    # Build Markdown Sections
+    # 7. Recommandations PME
+    md.append("## 6. Recommandations PME")
+    md.append("Sur la base des familles de menaces et des indicateurs prédominants identifiés dans le jeu de données :")
+    for reco in recommendations_list:
+        md.append(f"- **Action préventive** : {reco}")
+    md.append("")
+
+    # 8. Observations
+    md.append("## 7. Observations")
     md.append(f"- La source URLhaus représente {urlhaus_pct:.2f}% des événements collectés contre {(100-urlhaus_pct):.2f}% pour AbuseIPDB, reflétant la composition du flux plutôt qu'un paysage de menaces équilibré. [Interprétation à compléter]")
     md.append(f"- La catégorie ransomware_malware domine à {malware_pct:.2f}%, ce qui découle directement de la nature du flux URLhaus (URLs de distribution de malware). [Interprétation à compléter]")
     md.append("- [Placeholder libre — observation additionnelle à rédiger manuellement après lecture du rapport]\n")
 
-    # 8. Méthodologie et limites
-    md.append("## 7. Méthodologie et limites")
+    # 9. Méthodologie et limites
+    md.append("## 8. Méthodologie et limites")
     md.append("- **Sources** : 2 sources (URLhaus, AbuseIPDB).")
     md.append(f"- **Fenêtre temporelle** : {days_covered} jours (du 27/06/2026 au 18/08/2026).")
     md.append("- **Qualité de collecte** : 0 ligne avec date invalide (qualité de collecte confirmée).")

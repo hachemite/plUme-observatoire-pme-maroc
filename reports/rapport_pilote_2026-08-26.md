@@ -71,12 +71,21 @@ Les indicateurs récurrents proviennent exclusivement d'AbuseIPDB (IP signalées
 
 Aucun événement n'est classé 'critical' dans le jeu de données actuel — la taxonomie place les menaces les plus sévères observées (adresses IP AbuseIPDB liées au DDoS/extorsion) au niveau 'high'.
 
-## 6. Observations
+## 6. Recommandations PME
+Sur la base des familles de menaces et des indicateurs prédominants identifiés dans le jeu de données :
+- **Action préventive** : Sécurisez vos serveurs et appliances Linux (mises à jour de sécurité et gestion stricte des clés SSH).
+- **Action préventive** : Désactivez les services d'administration distants non sécurisés (Telnet/SSH) exposés sur Internet.
+- **Action préventive** : Mettez à jour le firmware de vos routeurs, caméras IP et équipements connectés (IoT).
+- **Action préventive** : Surveillez les connexions sortantes suspectes vers des serveurs de commande et contrôle (C2).
+- **Action préventive** : Filtrez les requêtes DNS sortantes vers les domaines de botnets identifiés.
+- **Action préventive** : Bloquez les adresses IP malveillantes récurrentes au niveau de votre pare-feu périmétrique.
+
+## 7. Observations
 - La source URLhaus représente 97.56% des événements collectés contre 2.44% pour AbuseIPDB, reflétant la composition du flux plutôt qu'un paysage de menaces équilibré. [Interprétation à compléter]
 - La catégorie ransomware_malware domine à 97.37%, ce qui découle directement de la nature du flux URLhaus (URLs de distribution de malware). [Interprétation à compléter]
 - [Placeholder libre — observation additionnelle à rédiger manuellement après lecture du rapport]
 
-## 7. Méthodologie et limites
+## 8. Méthodologie et limites
 - **Sources** : 2 sources (URLhaus, AbuseIPDB).
 - **Fenêtre temporelle** : 53 jours (du 27/06/2026 au 18/08/2026).
 - **Qualité de collecte** : 0 ligne avec date invalide (qualité de collecte confirmée).
