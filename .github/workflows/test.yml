@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main, jalon_3, jalon_alt_4 ]
+    branches: [ main, jalon_3, jalon_alt_4, jalon_alt_5 ]
   pull_request:
-    branches: [ main, jalon_3, jalon_alt_4 ]
+    branches: [ main, jalon_3, jalon_alt_4, jalon_alt_5 ]
 
 jobs:
   test:
