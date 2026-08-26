@@ -69,11 +69,14 @@ def test_train_category_classifier_synthetic_fast():
         {"indicator_value": "https://account-verify.service.net/login", "indicator_type": "url", "category": "phishing"},
     ])
 
-    results = train_category_classifier(synthetic_df, max_depth=3)
+    results = train_category_classifier(synthetic_df)
     assert results["model"] is not None
+    assert results["baseline_model"] is not None
+    assert results["rf_model"] is not None
     assert results["raw_accuracy"] > 0.0
     assert results["balanced_accuracy"] > 0.0
     assert not results["confusion_matrix"].empty
-    assert isinstance(results["feature_importances"], pd.Series)
-    assert len(results["feature_importances"]) == len(FEATURE_COLUMNS)
-    assert "L'arbre de décision" in results["interpretation"]
+    assert isinstance(results["feature_importances_dt"], pd.Series)
+    assert isinstance(results["feature_importances_rf"], pd.Series)
+    assert len(results["feature_importances_dt"]) == len(FEATURE_COLUMNS)
+    assert "Protocole d'Évaluation Rigoureux" in results["interpretation"]

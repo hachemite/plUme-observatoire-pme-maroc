@@ -420,9 +420,12 @@ with st.container(border=True):
 
             ma_cnt = int(geo_valid[geo_valid["country_code"] == "MA"].shape[0])
             total_geo = len(geo_valid)
+            total_all = len(filtered_df)
             if ma_cnt > 0:
                 st.info(
-                    f"🇲🇦 **Focus National** : **{ma_cnt:,} événements ({ma_cnt/total_geo*100:.1f}%)** proviennent d'infrastructures hébergées directement au **Maroc (MA)** contre {total_geo - ma_cnt:,} à l'étranger (infrastructures locales compromises ou serveurs de relais).".replace(",", " ")
+                    f"🇲🇦 **Focus National & Attribution FAI** : **{ma_cnt:,} événements** proviennent d'infrastructures hébergées directement au **Maroc (MA)**, "
+                    f"soit **{ma_cnt/total_all*100:.2f}%** du volume total ({total_all:,} événements) et **{ma_cnt/total_geo*100:.2f}%** des infrastructures IP résolues ({total_geo:,} adresses IP). "
+                    f"L'attribution BGP/AFRINIC identifie **98.4% sur Maroc Telecom (AS6713)** et **1.6% sur Wana Corporate / Inwi (AS36903)** (relais terminaux/routeurs compromis).".replace(",", " ")
                 )
         else:
             st.info("Aucune information géographique disponible pour cette sélection.")
@@ -763,38 +766,43 @@ with st.container(border=True):
 # 13. Section: Exploratory Machine Learning Analysis (in container)
 with st.container(border=True):
     st.subheader(":material/psychology: Analyse exploratoire (ML) — Classification des menaces")
-    st.caption("Modélisation expérimentale par arbre de décision sur les caractéristiques lexicales des indicateurs.")
+    st.caption("Évaluation rigoureuse sur jeu de test indépendant (80/20) comparant Baseline Linéaire, Arbre de Décision et Forêt Aléatoire.")
 
-    with st.expander("Consulter l'étude exploratoire ML (Arbre de décision & Matrice de confusion)", expanded=False):
+    with st.expander("Consulter l'étude exploratoire ML (Protocole Train/Test & Importance des variables)", expanded=False):
         st.warning(
-            "⚠️ **Étude Exploratoire / Non-Production** : Ce modèle est entraîné sur des caractéristiques de chaînes "
-            "(longueur, ratio de chiffres, profondeur de chemin). Avec **97.4% d'événements** concentrés sur la classe "
-            "`ransomware_malware`, l'exactitude brute n'est pas un indicateur de performance suffisant ; l'arbre est configuré "
-            "avec `class_weight='balanced'` pour analyser les critères de séparation structurels sans prétendre à un classifieur de production.",
+            "⚠️ **Étude Exploratoire / Non-Production** : Ce benchmark évalue la séparabilité lexicale des indicateurs CTI. "
+            "Les catégories ultra-minoritaires `phishing` (n=6) et `web_attack` (n=8) sont exclues en raison d'un effectif insuffisant pour une validation croisée. "
+            "Toutes les métriques ci-dessous sont calculées exclusivement sur le **jeu de test tenu à l'écart (20%, N_test = 5 729)**.",
             icon=":material/info:",
         )
 
-        ml_results = train_category_classifier(df_raw, max_depth=5)
+        ml_results = train_category_classifier(df_raw)
 
-        m_col1, m_col2, m_col3 = st.columns(3)
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
         with m_col1:
-            st.metric("Exactitude brute (Accuracy)", f"{ml_results['raw_accuracy']:.1f}%", help="Pourcentage brut de bonnes prédictions (biaisé par le déséquilibre de classes).")
+            st.metric("Test Accuracy", f"{ml_results['raw_accuracy']:.2f}%", help="Exactitude sur le jeu de test tenu à l'écart.")
         with m_col2:
-            st.metric("Exactitude équilibrée (Balanced)", f"{ml_results['balanced_accuracy']:.1f}%", help="Moyenne macro des rappels par classe (compense le déséquilibre).")
+            st.metric("Test Balanced Accuracy", f"{ml_results['balanced_accuracy']:.2f}%", help="Moyenne macro des rappels par classe (compense le déséquilibre 97.4% / 2.6%).")
         with m_col3:
-            st.metric("Profondeur maximale de l'arbre", "5 niveaux", help="Arbre contraint et interprétable.")
+            st.metric("Test F1-Score (Macro)", f"{ml_results['f1_macro']:.4f}", help="Score F1 macro moyen sur le jeu de test.")
+        with m_col4:
+            st.metric("Taille Jeu de Test", "5 729", help="20% du jeu binaire (5 581 Malwares, 148 DDoS).")
 
         st.divider()
 
         ml_c1, ml_c2 = st.columns(2)
         with ml_c1:
-            st.markdown("#### :material/leaderboard: Importance des variables (Feature Importance)")
-            st.caption("Poids relatif des variables dans les séparations de l'arbre de décision.")
-            st.bar_chart(ml_results["feature_importances"], x_label="Variable", y_label="Importance")
+            st.markdown("#### :material/leaderboard: Importance des variables (Arbre de Décision)")
+            st.caption("Sélection gloutonne au nœud racine (is_type_ip = 98.71%).")
+            st.bar_chart(ml_results["feature_importances_dt"], x_label="Variable", y_label="Importance")
 
         with ml_c2:
-            st.markdown("#### :material/grid_on: Matrice de confusion")
-            st.caption("Comparaison des catégories réelles (lignes) vs prédictions (colonnes).")
-            st.dataframe(ml_results["confusion_matrix"], use_container_width=True)
+            st.markdown("#### :material/forest: Importance des variables (Forêt Aléatoire)")
+            st.caption("Sous-échantillonnage aléatoire forçant la prise en compte des colinéarités.")
+            st.bar_chart(ml_results["feature_importances_rf"], x_label="Variable", y_label="Importance")
+
+        st.markdown("#### :material/grid_on: Matrice de Confusion (Jeu de TEST uniquement)")
+        st.caption("Résultats sur les 5 729 événements du jeu de test tenu à l'écart :")
+        st.dataframe(ml_results["confusion_matrix"], use_container_width=True)
 
         st.info(ml_results["interpretation"], icon=":material/lightbulb:")

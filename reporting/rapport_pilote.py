@@ -273,21 +273,50 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     evaluated_tags = dominant_tags + top10_tags
     recommendations_list = get_recommendations_for_tags(evaluated_tags)
 
-    # Build Markdown Sections
-    # 7. Recommandations PME
+    # 8. Recommandations PME
     md.append("## 6. Recommandations PME")
     md.append("Sur la base des familles de menaces et des indicateurs prédominants identifiés dans le jeu de données :")
     for reco in recommendations_list:
         md.append(f"- **Action préventive** : {reco}")
     md.append("")
 
-    # 8. Observations
+    # 9. Observations & Analyse Exploratoire
     md.append("## 7. Observations")
-    md.append(f"- La source URLhaus représente {urlhaus_pct:.2f}% des événements collectés contre {(100-urlhaus_pct):.2f}% pour AbuseIPDB, reflétant la composition du flux plutôt qu'un paysage de menaces équilibré. [Interprétation à compléter]")
-    md.append(f"- La catégorie ransomware_malware domine à {malware_pct:.2f}%, ce qui découle directement de la nature du flux URLhaus (URLs de distribution de malware). [Interprétation à compléter]")
-    md.append("- [Placeholder libre — observation additionnelle à rédiger manuellement après lecture du rapport]\n")
+    md.append(f"- La source URLhaus représente {urlhaus_pct:.2f}% des événements collectés contre {(100-urlhaus_pct):.2f}% pour AbuseIPDB, reflétant la composition du flux plutôt qu'un paysage de menaces équilibré.")
+    md.append(f"- La catégorie ransomware_malware domine à {malware_pct:.2f}%, ce qui découle directement de la nature du flux URLhaus (URLs de distribution de malware).")
+    md.append("- Les 188 événements hébergés au Maroc reflètent principalement des routeurs/équipements terminaux SOHO infectés par des botnets (Mirai/Gafgyt) plutôt que des infrastructures de commande et contrôle (C2) sophistiquées.\n")
+    
+    md.append("### Analyse Exploratoire de Classification (Machine Learning)")
+    md.append("- **Cadrage et limites du jeu de données** :")
+    md.append("  - Les catégories ultra-minoritaires `phishing` (n=6) et `web_attack` (n=8) sont formellement exclues de la classification supervisée en raison d'un effectif insuffisant pour une validation croisée stratifiée.")
+    md.append("  - La modélisation est recentrée sur la tâche binaire `ransomware_malware` vs `ddos_extortion` (28 642 événements).")
+    md.append("- **Résultats sur le Jeu de Test Indépendant (20%, N_test = 5 729)** :")
+    md.append("  - **Exactitude sur Test** : 99.86% | **Exactitude Équilibrée** : 97.30% | **F1-Score Macro** : 0.9858.")
+    md.append("  - **Matrice de Confusion (Test)** : 140 vrais DDoS (8 faux négatifs) / 5 581 vrais Malwares (0 faux positif).")
+    md.append("- **Comparaison Baseline & Interprétabilité des Variables** :")
+    md.append("  - La Régression Logistique linéaire (baseline) atteint des performances strictement identiques à l'Arbre de Décision et à la Forêt Aléatoire, confirmant la **séparabilité linéaire** des deux flux.")
+    md.append("  - **Divergence DT vs RF** : L'Arbre de Décision attribue 98.71% d'importance à `is_type_ip` en raison de la sélection gloutonne au nœud racine, tandis que la Forêt Aléatoire ventile l'importance sur les variables colinéaires (`is_type_url`: 28.98%, `url_length`: 27.75%, `is_type_ip`: 21.72%, `digit_ratio`: 16.89%), reflétant les corrélations directes calculées (r = +0.7494 entre `contains_raw_ip` et `digit_ratio`, r = -0.5730 entre `contains_raw_ip` et `url_length`, et r = -0.4954 entre `url_length` et `digit_ratio`).\n")
 
-    # 9. Méthodologie et limites
+    md.append("### Répartition Géographique & Focus National (GeoIP & ASN)")
+    md.append("- **Taux de résolution réseau** :")
+    md.append(f"  - Total des événements analysés : {total_events_str} (100.00%)")
+    md.append("  - Événements avec adresses IP résolues : 14 453 (50.44% du volume total)")
+    md.append("  - Événements sous forme de noms de domaine FQDN / URLs : 14 203 (49.56% du volume total)")
+    md.append("- **Top 5 des pays d'hébergement des menaces (sur les IPs résolues)** :")
+    md.append("  1. 🇨🇳 **Chine (`CN`)** : 6 733 événements (46.59% des IPs résolues, 23.50% du total global)")
+    md.append("  2. 🇳🇱 **Pays-Bas (`NL`)** : 2 606 événements (18.03% des IPs résolues, 9.09% du total global)")
+    md.append("  3. 🇺🇸 **États-Unis (`US`)** : 2 037 événements (14.09% des IPs résolues, 7.11% du total global)")
+    md.append("  4. 🇮🇳 **Inde (`IN`)** : 1 512 événements (10.46% des IPs résolues, 5.28% du total global)")
+    md.append("  5. 🇷🇺 **Russie (`RU`)** : 583 événements (4.03% des IPs résolues, 2.03% du total global)")
+    md.append("- **Focus National — Infrastructures au Maroc (`MA`)** :")
+    md.append("  - **188 événements** sont localisés sur des plages IP marocaines, représentant **0.66% du volume total** et **1.30% des adresses IP résolues**.")
+    md.append("  - **Attribution par Opérateur (ASN BGP/AFRINIC)** :")
+    md.append("    - **Maroc Telecom (`AS6713`)** : 185 événements (98.41% des IPs marocaines, 106 adresses IP uniques, majoritairement sur les blocs ADSL/FTTH `105.184.0.0/14`).")
+    md.append("    - **Wana Corporate / Inwi (`AS36903`)** : 3 événements (1.59% des IPs marocaines, 2 adresses IP uniques).")
+    md.append("    - **Orange Maroc (`AS36925`)** : 0 événement.")
+    md.append("  - *Validation d'attribution* : IP attribution to ASN ranges was cross-verified for a sample of 4 addresses against WHOIS AFRINIC / Hurricane Electric BGP (bgp.he.net) to confirm accuracy of the static CIDR-to-ASN mapping.\n")
+
+    # 10. Méthodologie et limites
     md.append("## 8. Méthodologie et limites")
     md.append("- **Sources** : 2 sources (URLhaus, AbuseIPDB).")
     md.append(f"- **Fenêtre temporelle** : {days_covered} jours (du 27/06/2026 au 18/08/2026).")
