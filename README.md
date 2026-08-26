@@ -86,11 +86,17 @@ cp .env.example .env
 Pour explorer visuellement les indicateurs de menace, les ventilations taxonomiques et les alertes PME :
 
 ```bash
-# Lancer l'application Streamlit
+# Lancer l'application Streamlit localement
 streamlit run app.py
 ```
 
 L'application s'ouvrira automatiquement dans votre navigateur à l'adresse **`http://localhost:8501`**.
+
+#### 🐳 Déploiement Conteneurisé (Docker)
+Pour exécuter l'application en conteneur en une seule commande :
+```bash
+docker build -t observatoire . && docker run -p 8501:8501 observatoire
+```
 
 **Fonctionnalités du Dashboard :**
 - 📈 **KPIs globaux** : Volume d'événements, IoCs critiques, répartition par source et dates couvertes.
@@ -212,11 +218,17 @@ cp .env.example .env
 To launch the web interface and explore cyber threat telemetry:
 
 ```bash
-# Launch Streamlit dashboard
+# Launch Streamlit dashboard locally
 streamlit run app.py
 ```
 
 Access the dashboard at **`http://localhost:8501`**.
+
+#### 🐳 Containerized Deployment (Docker)
+To build and run the application in an isolated container in a single command:
+```bash
+docker build -t observatoire . && docker run -p 8501:8501 observatoire
+```
 
 **Dashboard Features:**
 - 📈 **Executive KPIs**: Real-time total events, critical IoCs, data completeness, and source splits.
