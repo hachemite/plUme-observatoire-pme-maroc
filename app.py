@@ -16,7 +16,9 @@ except ImportError:
         """Fallback no-op when streamlit_extras is not installed."""
         pass
 
+import altair as alt
 from analytics.correlate import tag_cross_source_confirmed
+from analytics.geoip import tag_dataframe_countries
 from analytics.risk_score import score_indicators_dataframe
 from analytics.stats import compute_daily_stats, load_events
 from collectors.abuseipdb import get_abuseipdb_api_key
@@ -93,6 +95,7 @@ def get_data() -> pd.DataFrame:
         df["parsed_datetime"] = parsed_dates
         df["date"] = parsed_dates.dt.date
         df = tag_cross_source_confirmed(df)
+        df = tag_dataframe_countries(df)
         df = score_indicators_dataframe(df)
     else:
         df["parsed_datetime"] = pd.Series(dtype="datetime64[ns, UTC]")
@@ -385,6 +388,45 @@ with st.container(border=True):
             st.bar_chart(sector_counts, x_label="Secteur", y_label="Événements")
         else:
             st.info("Aucune donnée sectorielle disponible.")
+
+    # Geographic Breakdown (GeoIP)
+    st.markdown("#### :material/public: Répartition géographique des infrastructures (Top 10 Pays)")
+    st.caption("Origine géographique des serveurs hébergeant les malwares et attaques identifiés (GeoIP hors-ligne).")
+
+    if not filtered_df.empty and "country_code" in filtered_df.columns:
+        geo_valid = filtered_df[filtered_df["country_code"].astype(str).str.lower() != "unknown"]
+        if not geo_valid.empty:
+            country_series = geo_valid["country_code"].value_counts().head(10).reset_index()
+            country_series.columns = ["Pays", "Événements"]
+
+            # Highlight Morocco in ochre (#db7c26) vs foreign in cool steel (#4a525d)
+            geo_chart = (
+                alt.Chart(country_series)
+                .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                .encode(
+                    x=alt.X("Événements:Q", title="Nombre d'événements"),
+                    y=alt.Y("Pays:N", sort="-x", title="Code Pays (ISO-2)"),
+                    color=alt.condition(
+                        alt.datum.Pays == "MA",
+                        alt.value("#db7c26"),  # Ochre accent for Morocco
+                        alt.value("#4a525d"),  # Cool steel slate for foreign infrastructure
+                    ),
+                    tooltip=["Pays", "Événements"],
+                )
+                .properties(height=260)
+            )
+            st.altair_chart(geo_chart, use_container_width=True)
+
+            ma_cnt = int(geo_valid[geo_valid["country_code"] == "MA"].shape[0])
+            total_geo = len(geo_valid)
+            if ma_cnt > 0:
+                st.info(
+                    f"🇲🇦 **Focus National** : **{ma_cnt:,} événements ({ma_cnt/total_geo*100:.1f}%)** proviennent d'infrastructures hébergées directement au **Maroc (MA)** contre {total_geo - ma_cnt:,} à l'étranger (infrastructures locales compromises ou serveurs de relais).".replace(",", " ")
+                )
+        else:
+            st.info("Aucune information géographique disponible pour cette sélection.")
+    else:
+        st.info("Aucune donnée géographique disponible.")
 
     st.markdown("#### :material/priority_high: Top 10 des indicateurs prioritaires (par score de risque)")
     st.caption("Indicateurs classés selon le score composite de risque (gravité, récurrence, corrélation multi-sources et catégorie).")
