@@ -17,6 +17,7 @@ except ImportError:
         pass
 
 import altair as alt
+from analytics.classifier import train_category_classifier
 from analytics.correlate import tag_cross_source_confirmed
 from analytics.geoip import tag_dataframe_countries
 from analytics.risk_score import score_indicators_dataframe
@@ -758,3 +759,42 @@ with st.container(border=True):
                 st.info("Aucun indicateur disponible dans le jeu de données filtré.")
     else:
         st.info("Aucun événement détaillé disponible pour cette sélection.")
+
+# 13. Section: Exploratory Machine Learning Analysis (in container)
+with st.container(border=True):
+    st.subheader(":material/psychology: Analyse exploratoire (ML) — Classification des menaces")
+    st.caption("Modélisation expérimentale par arbre de décision sur les caractéristiques lexicales des indicateurs.")
+
+    with st.expander("Consulter l'étude exploratoire ML (Arbre de décision & Matrice de confusion)", expanded=False):
+        st.warning(
+            "⚠️ **Étude Exploratoire / Non-Production** : Ce modèle est entraîné sur des caractéristiques de chaînes "
+            "(longueur, ratio de chiffres, profondeur de chemin). Avec **97.4% d'événements** concentrés sur la classe "
+            "`ransomware_malware`, l'exactitude brute n'est pas un indicateur de performance suffisant ; l'arbre est configuré "
+            "avec `class_weight='balanced'` pour analyser les critères de séparation structurels sans prétendre à un classifieur de production.",
+            icon=":material/info:",
+        )
+
+        ml_results = train_category_classifier(df_raw, max_depth=5)
+
+        m_col1, m_col2, m_col3 = st.columns(3)
+        with m_col1:
+            st.metric("Exactitude brute (Accuracy)", f"{ml_results['raw_accuracy']:.1f}%", help="Pourcentage brut de bonnes prédictions (biaisé par le déséquilibre de classes).")
+        with m_col2:
+            st.metric("Exactitude équilibrée (Balanced)", f"{ml_results['balanced_accuracy']:.1f}%", help="Moyenne macro des rappels par classe (compense le déséquilibre).")
+        with m_col3:
+            st.metric("Profondeur maximale de l'arbre", "5 niveaux", help="Arbre contraint et interprétable.")
+
+        st.divider()
+
+        ml_c1, ml_c2 = st.columns(2)
+        with ml_c1:
+            st.markdown("#### :material/leaderboard: Importance des variables (Feature Importance)")
+            st.caption("Poids relatif des variables dans les séparations de l'arbre de décision.")
+            st.bar_chart(ml_results["feature_importances"], x_label="Variable", y_label="Importance")
+
+        with ml_c2:
+            st.markdown("#### :material/grid_on: Matrice de confusion")
+            st.caption("Comparaison des catégories réelles (lignes) vs prédictions (colonnes).")
+            st.dataframe(ml_results["confusion_matrix"], use_container_width=True)
+
+        st.info(ml_results["interpretation"], icon=":material/lightbulb:")
