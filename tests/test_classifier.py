@@ -39,9 +39,11 @@ def test_extract_indicator_features_structure():
     assert features.loc[1, "is_type_ip"] == 1
     assert features.loc[1, "contains_raw_ip"] == 1
 
-    # Row 2: Phishing domain with keywords
+    # Phishing domain with keywords and lifecycle fields
     assert features.loc[2, "suspicious_kw_count"] >= 2
     assert features.loc[2, "contains_raw_ip"] == 0
+    assert "days_since_first_seen" in features.columns
+    assert "times_seen_across_runs" in features.columns
 
 
 def test_extract_indicator_features_empty():

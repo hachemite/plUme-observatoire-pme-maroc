@@ -11,9 +11,11 @@ def isolate_data_dir(tmp_path, monkeypatch):
     """Fixture ensuring save_events and load_events operate in a temporary directory."""
     temp_data_dir = tmp_path / "data"
     temp_data_file = temp_data_dir / "threat_events.csv"
+    temp_db_file = temp_data_dir / "db.sqlite3"
 
     monkeypatch.setattr(repository, "DATA_DIR", temp_data_dir)
     monkeypatch.setattr(repository, "DATA_FILE", temp_data_file)
+    monkeypatch.setattr(repository, "DB_FILE", temp_db_file)
     return temp_data_file
 
 

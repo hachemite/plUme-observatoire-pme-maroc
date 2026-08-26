@@ -37,16 +37,19 @@ FEATURE_COLUMNS: List[str] = [
     "has_port",
     "has_query",
     "digit_ratio",
+    "days_since_first_seen",
+    "times_seen_across_runs",
 ]
 
 
 def extract_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Extract lexical and structural features from indicator strings.
+    """Extract lexical, structural, and temporal features from indicator strings and lifecycles.
 
-    Features are derived purely from strings without requiring external network lookups.
+    Features are derived from indicator strings and SQLite lifecycle history (first_seen, last_seen, times_seen).
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'indicator_value' and optional 'indicator_type'.
+        df (pd.DataFrame): DataFrame containing 'indicator_value', optional 'indicator_type',
+                           and optional lifecycle fields ('first_seen', 'last_seen', 'times_seen').
 
     Returns:
         pd.DataFrame: Numerical feature matrix with standard columns.
@@ -89,6 +92,27 @@ def extract_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
         digits_count = sum(c.isdigit() for c in val)
         digit_ratio = (digits_count / url_len) if url_len > 0 else 0.0
 
+        # 7. Temporal & Recurrence lifecycle features
+        first_s = str(row.get("first_seen", "")).strip()
+        last_s = str(row.get("last_seen", "")).strip()
+        days_active = 0.0
+        if first_s and last_s:
+            try:
+                dt_first = pd.to_datetime(first_s)
+                dt_last = pd.to_datetime(last_s)
+                days_active = max(0.0, (dt_last - dt_first).total_seconds() / 86400.0)
+            except Exception:
+                days_active = 0.0
+
+        times_seen_val = row.get("times_seen", None)
+        if times_seen_val is not None:
+            try:
+                times_seen_across_runs = float(times_seen_val)
+            except Exception:
+                times_seen_across_runs = 1.0
+        else:
+            times_seen_across_runs = 1.0
+
         records.append({
             "url_length": url_len,
             "subdomain_count": subdomains,
@@ -100,6 +124,8 @@ def extract_indicator_features(df: pd.DataFrame) -> pd.DataFrame:
             "has_port": has_port,
             "has_query": has_query,
             "digit_ratio": round(digit_ratio, 4),
+            "days_since_first_seen": round(days_active, 2),
+            "times_seen_across_runs": times_seen_across_runs,
         })
 
     return pd.DataFrame(records)[FEATURE_COLUMNS]

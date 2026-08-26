@@ -16,12 +16,12 @@ except ImportError:
         """Fallback no-op when streamlit_extras is not installed."""
         pass
 
-import altair as alt
 from analytics.classifier import train_category_classifier
 from analytics.correlate import tag_cross_source_confirmed
 from analytics.geoip import tag_dataframe_countries
 from analytics.risk_score import score_indicators_dataframe
 from analytics.stats import compute_daily_stats, load_events
+from storage.repository import load_indicators
 from collectors.abuseipdb import get_abuseipdb_api_key
 from theme_tokens import COLORS, SEVERITY_COLORS, SEVERITY_LABELS
 
@@ -806,3 +806,90 @@ with st.container(border=True):
         st.dataframe(ml_results["confusion_matrix"], use_container_width=True)
 
         st.info(ml_results["interpretation"], icon=":material/lightbulb:")
+
+# 14. Section: Indicator Lifecycle Tracking (SQLite Operational Store)
+with st.container(border=True):
+    st.subheader(":material/history_toggle_off: Cycle de vie des indicateurs (Store Opérationnel SQLite)")
+    st.caption("Suivi de persistance, de récurrence et d'obsolescence des entités IoC à travers l'historique des collectes.")
+
+    indicators_db_df = load_indicators()
+
+    if not indicators_db_df.empty:
+        total_iocs = len(indicators_db_df)
+
+        # Interactive controls for staleness threshold
+        c_filter1, c_filter2 = st.columns([2, 2])
+        with c_filter1:
+            stale_days = st.slider(
+                "Seuil d'inactivité pour obsolescence (jours) :",
+                min_value=7,
+                max_value=60,
+                value=14,
+                step=1,
+                help="Nombre de jours depuis la dernière observation pour classer un indicateur comme obsolète / inactif.",
+            )
+
+        # Parse datetime for lifecycle categorization
+        now_ref = pd.to_datetime(indicators_db_df["last_seen"].max()) if not indicators_db_df["last_seen"].dropna().empty else pd.Timestamp.now()
+        last_seen_dt = pd.to_datetime(indicators_db_df["last_seen"], errors="coerce")
+        first_seen_dt = pd.to_datetime(indicators_db_df["first_seen"], errors="coerce")
+
+        is_new = (indicators_db_df["times_seen"] == 1) | (indicators_db_df["first_seen"] == indicators_db_df["last_seen"])
+        is_recurring = indicators_db_df["times_seen"] >= 2
+        is_stale = (now_ref - last_seen_dt).dt.total_seconds() / 86400.0 > stale_days
+
+        new_count = int(is_new.sum())
+        recurring_count = int(is_recurring.sum())
+        stale_count = int(is_stale.sum())
+
+        new_pct = (new_count / total_iocs * 100) if total_iocs > 0 else 0.0
+        recurring_pct = (recurring_count / total_iocs * 100) if total_iocs > 0 else 0.0
+        stale_pct = (stale_count / total_iocs * 100) if total_iocs > 0 else 0.0
+
+        # KPI Metric Cards
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.metric("Total IoCs Uniques", f"{total_iocs:,}".replace(",", " "), help="Nombre total d'indicateurs distincts indexés dans SQLite.")
+        with k2:
+            st.metric("Nouveaux (1 seule vue)", f"{new_count:,}".replace(",", " "), delta=f"{new_pct:.1f}% du total", delta_color="off", help="Indicateurs observés une seule fois (first_seen == last_seen).")
+        with k3:
+            st.metric("Récurrents (≥2 vues)", f"{recurring_count:,}".replace(",", " "), delta=f"{recurring_pct:.2f}% du total", delta_color="inverse", help="Indicateurs observés lors de plusieurs cycles de collecte.")
+        with k4:
+            st.metric(f"Obsolètes (> {stale_days}j)", f"{stale_count:,}".replace(",", " "), delta=f"{stale_pct:.1f}% inactifs", delta_color="off", help=f"Indicateurs non réapparus depuis plus de {stale_days} jours.")
+
+        st.divider()
+
+        # Display Top Persistent Indicators
+        st.markdown("#### :material/replay: Indicateurs les plus récurrents et persistants")
+        top_persistent = indicators_db_df.sort_values(by=["times_seen", "last_seen"], ascending=[False, False]).head(20)
+
+        persistent_config = {
+            "indicator_value": st.column_config.TextColumn("Indicateur (IoC)", width="medium"),
+            "indicator_type": st.column_config.TextColumn("Type"),
+            "first_seen": st.column_config.TextColumn("Première observation"),
+            "last_seen": st.column_config.TextColumn("Dernière observation"),
+            "times_seen": st.column_config.NumberColumn("Occurrences (Runs)", format="%d"),
+            "category": st.column_config.TextColumn("Catégorie"),
+            "severity": st.column_config.TextColumn("Sévérité"),
+            "country_code": st.column_config.TextColumn("Pays"),
+            "cross_source_confirmed": st.column_config.CheckboxColumn("Corroboré"),
+        }
+
+        st.dataframe(
+            top_persistent[[
+                "indicator_value",
+                "indicator_type",
+                "first_seen",
+                "last_seen",
+                "times_seen",
+                "category",
+                "severity",
+                "country_code",
+                "cross_source_confirmed",
+            ]],
+            column_config=persistent_config,
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("Aucune donnée de cycle de vie disponible dans le store opérationnel SQLite.")
