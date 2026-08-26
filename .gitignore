@@ -24,7 +24,7 @@ secrets.toml
 # Project-specific private/custom files
 work official document mission/
 PROJECT_CONTEXT.txt
-explaining/
+/explaining/
 
 
 # IDE & OS settings
