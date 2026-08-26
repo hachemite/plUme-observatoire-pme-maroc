@@ -3,6 +3,7 @@
 > *"Voir le signal avant l'éruption."* / *"See the signal before the eruption."*
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![CI Tests](https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml/badge.svg)](https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml)
 [![Tests](https://img.shields.io/badge/tests-14%20passed-brightgreen.svg)](#6-exécution-des-tests-unitaires--running-tests)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
