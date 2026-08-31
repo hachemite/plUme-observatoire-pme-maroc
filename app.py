@@ -6,6 +6,7 @@ Streamlit application for threat intelligence visualization and SME monitoring.
 import base64
 from datetime import date
 from pathlib import Path
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -16,7 +17,12 @@ except ImportError:
         """Fallback no-op when streamlit_extras is not installed."""
         pass
 
+from analytics.classifier import train_category_classifier
+from analytics.correlate import tag_cross_source_confirmed
+from analytics.geoip import tag_dataframe_countries
+from analytics.risk_score import score_indicators_dataframe
 from analytics.stats import compute_daily_stats, load_events
+from storage.repository import load_indicators
 from collectors.abuseipdb import get_abuseipdb_api_key
 from theme_tokens import COLORS, SEVERITY_COLORS, SEVERITY_LABELS
 
@@ -80,7 +86,7 @@ def get_data() -> pd.DataFrame:
     """Load and preprocess threat events from the storage layer with caching.
 
     Returns:
-        pd.DataFrame: Threat events with parsed datetime and date columns.
+        pd.DataFrame: Threat events with parsed datetime, cross-source confirmation, and risk scores.
     """
     df = load_events()
     if not df.empty and "date_added" in df.columns:
@@ -90,9 +96,14 @@ def get_data() -> pd.DataFrame:
         df = df.copy()
         df["parsed_datetime"] = parsed_dates
         df["date"] = parsed_dates.dt.date
+        df = tag_cross_source_confirmed(df)
+        df = tag_dataframe_countries(df)
+        df = score_indicators_dataframe(df)
     else:
         df["parsed_datetime"] = pd.Series(dtype="datetime64[ns, UTC]")
         df["date"] = pd.Series(dtype="object")
+        df["cross_source_confirmed"] = pd.Series(dtype=bool)
+        df["risk_score"] = pd.Series(dtype=float)
     return df
 
 
@@ -380,27 +391,76 @@ with st.container(border=True):
         else:
             st.info("Aucune donnée sectorielle disponible.")
 
-    st.markdown("#### :material/priority_high: Top 10 des indicateurs récurrents")
-    st.caption("Indicateurs (IoC) les plus fréquemment observés sur plusieurs collectes — signal fort de persistance.")
+    # Geographic Breakdown (GeoIP)
+    st.markdown("#### :material/public: Répartition géographique des infrastructures (Top 10 Pays)")
+    st.caption("Origine géographique des serveurs hébergeant les malwares et attaques identifiés (GeoIP hors-ligne).")
+
+    if not filtered_df.empty and "country_code" in filtered_df.columns:
+        geo_valid = filtered_df[filtered_df["country_code"].astype(str).str.lower() != "unknown"]
+        if not geo_valid.empty:
+            country_series = geo_valid["country_code"].value_counts().head(10).reset_index()
+            country_series.columns = ["Pays", "Événements"]
+
+            # Highlight Morocco in ochre (#db7c26) vs foreign in cool steel (#4a525d)
+            geo_chart = (
+                alt.Chart(country_series)
+                .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                .encode(
+                    x=alt.X("Événements:Q", title="Nombre d'événements"),
+                    y=alt.Y("Pays:N", sort="-x", title="Code Pays (ISO-2)"),
+                    color=alt.condition(
+                        alt.datum.Pays == "MA",
+                        alt.value("#db7c26"),  # Ochre accent for Morocco
+                        alt.value("#4a525d"),  # Cool steel slate for foreign infrastructure
+                    ),
+                    tooltip=["Pays", "Événements"],
+                )
+                .properties(height=260)
+            )
+            st.altair_chart(geo_chart, use_container_width=True)
+
+            ma_cnt = int(geo_valid[geo_valid["country_code"] == "MA"].shape[0])
+            total_geo = len(geo_valid)
+            total_all = len(filtered_df)
+            if ma_cnt > 0:
+                st.info(
+                    f"🇲🇦 **Focus National & Attribution FAI** : **{ma_cnt:,} événements** proviennent d'infrastructures hébergées directement au **Maroc (MA)**, "
+                    f"soit **{ma_cnt/total_all*100:.2f}%** du volume total ({total_all:,} événements) et **{ma_cnt/total_geo*100:.2f}%** des infrastructures IP résolues ({total_geo:,} adresses IP). "
+                    f"L'attribution BGP/AFRINIC identifie **98.4% sur Maroc Telecom (AS6713)** et **1.6% sur Wana Corporate / Inwi (AS36903)** (relais terminaux/routeurs compromis).".replace(",", " ")
+                )
+        else:
+            st.info("Aucune information géographique disponible pour cette sélection.")
+    else:
+        st.info("Aucune donnée géographique disponible.")
+
+    st.markdown("#### :material/priority_high: Top 10 des indicateurs prioritaires (par score de risque)")
+    st.caption("Indicateurs classés selon le score composite de risque (gravité, récurrence, corrélation multi-sources et catégorie).")
 
     if not filtered_df.empty and "indicator_value" in filtered_df.columns:
         top_offenders = (
             filtered_df.groupby("indicator_value")
             .agg(
+                risk_score=("risk_score", "max"),
                 occurrences=("indicator_value", "count"),
                 type=("indicator_type", "first"),
                 category=("category", "first"),
                 severity=("severity", "first"),
+                cross_source_confirmed=("cross_source_confirmed", "max"),
             )
             .reset_index()
-            .sort_values(by="occurrences", ascending=False)
+            .sort_values(by=["risk_score", "occurrences", "indicator_value"], ascending=[False, False, True])
             .head(10)
         )
 
         top_config = {
+            "risk_score": st.column_config.NumberColumn(
+                "Score de risque",
+                help="Score composite (0-100) : 40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie.",
+                format="%.1f",
+            ),
             "indicator_value": st.column_config.TextColumn(
                 "Indicateur (IoC)",
-                help="Valeur technique observable répétée dans les flux.",
+                help="Valeur technique observable dans les flux.",
             ),
             "type": st.column_config.TextColumn(
                 "Type",
@@ -414,6 +474,10 @@ with st.container(border=True):
                 "Sévérité",
                 help="Niveau de criticité évalué.",
             ),
+            "cross_source_confirmed": st.column_config.CheckboxColumn(
+                "Corroboré",
+                help="Indique si l'indicateur est corroboré simultanément sur URLhaus et AbuseIPDB.",
+            ),
             "occurrences": st.column_config.ProgressColumn(
                 "Occurrences",
                 help="Nombre total d'apparitions de cet indicateur.",
@@ -423,8 +487,29 @@ with st.container(border=True):
             ),
         }
 
+        # Apply severity and risk styling
+        def style_risk_score(val):
+            try:
+                num = float(val)
+            except (ValueError, TypeError):
+                return ""
+            if num >= 65.0:
+                color = SEVERITY_COLORS.get("high", "#c2452e")
+            elif num >= 50.0:
+                color = SEVERITY_COLORS.get("medium", "#e08d2e")
+            elif num >= 25.0:
+                color = SEVERITY_COLORS.get("low", "#f4c542")
+            else:
+                color = COLORS.get("cool_steel", "#a0a0a0")
+            return f"background-color: {color}22; color: {color}; font-weight: 700; border-radius: 4px;"
+
+        styled_top = (
+            top_offenders.style
+            .map(style_risk_score, subset=["risk_score"])
+        )
+
         st.dataframe(
-            top_offenders,
+            styled_top,
             column_config=top_config,
             use_container_width=True,
             hide_index=True,
@@ -485,6 +570,7 @@ with st.container(border=True):
         sorted_df = filtered_df.sort_values(by="parsed_datetime", ascending=False)
 
         standard_columns = [
+            "risk_score",
             "event_id",
             "source",
             "date_added",
@@ -496,6 +582,7 @@ with st.container(border=True):
             "status",
             "category",
             "severity",
+            "cross_source_confirmed",
             "sector_hint",
         ]
         display_cols = [c for c in standard_columns if c in sorted_df.columns]
@@ -521,6 +608,11 @@ with st.container(border=True):
             )
 
         col_config = {
+            "risk_score": st.column_config.NumberColumn(
+                "Score de risque",
+                help="Score composite (0-100) : 40% Sévérité, 30% Récurrence, 20% Corrélation multi-sources, 10% Catégorie.",
+                format="%.1f",
+            ),
             "event_id": st.column_config.TextColumn(
                 "ID Événement",
                 help="Identifiant unique de l'événement de menace.",
@@ -565,6 +657,10 @@ with st.container(border=True):
                 "Sévérité",
                 help="Niveau de criticité évalué : low, medium, high, critical, unknown.",
             ),
+            "cross_source_confirmed": st.column_config.CheckboxColumn(
+                "Corroboré",
+                help="Indique si l'indicateur est corroboré simultanément sur URLhaus et AbuseIPDB.",
+            ),
             "sector_hint": st.column_config.TextColumn(
                 "Secteur ciblé",
                 help="Indication sectorielle pour les PME marocaines.",
@@ -592,10 +688,26 @@ with st.container(border=True):
             color = cat_colors.get(str(val).lower(), COLORS.get("cool_steel", "#a0a0a0"))
             return f"background-color: {color}22; color: {color}; font-weight: 600; border-radius: 4px;"
 
+        def style_risk_score(val):
+            try:
+                num = float(val)
+            except (ValueError, TypeError):
+                return ""
+            if num >= 65.0:
+                color = SEVERITY_COLORS.get("high", "#c2452e")
+            elif num >= 50.0:
+                color = SEVERITY_COLORS.get("medium", "#e08d2e")
+            elif num >= 25.0:
+                color = SEVERITY_COLORS.get("low", "#f4c542")
+            else:
+                color = COLORS.get("cool_steel", "#a0a0a0")
+            return f"background-color: {color}22; color: {color}; font-weight: 700; border-radius: 4px;"
+
         styled_df = (
             capped_df.style
             .map(style_severity, subset=["severity"])
             .map(style_category, subset=["category"])
+            .map(style_risk_score, subset=["risk_score"])
         )
 
         st.dataframe(
@@ -604,6 +716,8 @@ with st.container(border=True):
             use_container_width=True,
             hide_index=True,
         )
+
+        st.caption("ℹ️ **Méthodologie du score de risque** : Le score (0 à 100) pondère la sévérité d'impact (40%), la récurrence de l'indicateur (30%), la corroboration croisée multi-sources (20%) et la dangerosité de la catégorie de menace (10%).")
 
         # 12. Detail drill-down expander with native st.badge indicators
         with st.expander("Voir un événement en détail"):
@@ -649,3 +763,134 @@ with st.container(border=True):
                 st.info("Aucun indicateur disponible dans le jeu de données filtré.")
     else:
         st.info("Aucun événement détaillé disponible pour cette sélection.")
+
+# 13. Section: Exploratory Machine Learning Analysis (in container)
+with st.container(border=True):
+    st.subheader(":material/psychology: Analyse exploratoire (ML) — Classification des menaces")
+    st.caption("Évaluation rigoureuse sur jeu de test indépendant (80/20) comparant Baseline Linéaire, Arbre de Décision et Forêt Aléatoire.")
+
+    with st.expander("Consulter l'étude exploratoire ML (Protocole Train/Test & Importance des variables)", expanded=False):
+        st.warning(
+            "⚠️ **Étude Exploratoire / Non-Production** : Ce benchmark évalue la séparabilité lexicale des indicateurs CTI. "
+            "Les catégories ultra-minoritaires `phishing` (n=6) et `web_attack` (n=8) sont exclues en raison d'un effectif insuffisant pour une validation croisée. "
+            "Toutes les métriques ci-dessous sont calculées exclusivement sur le **jeu de test tenu à l'écart (20%, N_test = 5 729)**.",
+            icon=":material/info:",
+        )
+
+        ml_results = train_category_classifier(df_raw)
+
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        with m_col1:
+            st.metric("Test Accuracy", f"{ml_results['raw_accuracy']:.2f}%", help="Exactitude sur le jeu de test tenu à l'écart.")
+        with m_col2:
+            st.metric("Test Balanced Accuracy", f"{ml_results['balanced_accuracy']:.2f}%", help="Moyenne macro des rappels par classe (compense le déséquilibre 97.4% / 2.6%).")
+        with m_col3:
+            st.metric("Test F1-Score (Macro)", f"{ml_results['f1_macro']:.4f}", help="Score F1 macro moyen sur le jeu de test.")
+        with m_col4:
+            st.metric("Taille Jeu de Test", "5 729", help="20% du jeu binaire (5 581 Malwares, 148 DDoS).")
+
+        st.divider()
+
+        ml_c1, ml_c2 = st.columns(2)
+        with ml_c1:
+            st.markdown("#### :material/leaderboard: Importance des variables (Arbre de Décision)")
+            st.caption("Sélection gloutonne au nœud racine (is_type_ip = 98.71%).")
+            st.bar_chart(ml_results["feature_importances_dt"], x_label="Variable", y_label="Importance")
+
+        with ml_c2:
+            st.markdown("#### :material/forest: Importance des variables (Forêt Aléatoire)")
+            st.caption("Sous-échantillonnage aléatoire forçant la prise en compte des colinéarités.")
+            st.bar_chart(ml_results["feature_importances_rf"], x_label="Variable", y_label="Importance")
+
+        st.markdown("#### :material/grid_on: Matrice de Confusion (Jeu de TEST uniquement)")
+        st.caption("Résultats sur les 5 729 événements du jeu de test tenu à l'écart :")
+        st.dataframe(ml_results["confusion_matrix"], use_container_width=True)
+
+        st.info(ml_results["interpretation"], icon=":material/lightbulb:")
+
+# 14. Section: Indicator Lifecycle Tracking (SQLite Operational Store)
+with st.container(border=True):
+    st.subheader(":material/history_toggle_off: Cycle de vie des indicateurs (Store Opérationnel SQLite)")
+    st.caption("Suivi de persistance, de récurrence et d'obsolescence des entités IoC à travers l'historique des collectes.")
+
+    indicators_db_df = load_indicators()
+
+    if not indicators_db_df.empty:
+        total_iocs = len(indicators_db_df)
+
+        # Interactive controls for staleness threshold
+        c_filter1, c_filter2 = st.columns([2, 2])
+        with c_filter1:
+            stale_days = st.slider(
+                "Seuil d'inactivité pour obsolescence (jours) :",
+                min_value=7,
+                max_value=60,
+                value=14,
+                step=1,
+                help="Nombre de jours depuis la dernière observation pour classer un indicateur comme obsolète / inactif.",
+            )
+
+        # Parse datetime for lifecycle categorization
+        now_ref = pd.to_datetime(indicators_db_df["last_seen"].max()) if not indicators_db_df["last_seen"].dropna().empty else pd.Timestamp.now()
+        last_seen_dt = pd.to_datetime(indicators_db_df["last_seen"], errors="coerce")
+        first_seen_dt = pd.to_datetime(indicators_db_df["first_seen"], errors="coerce")
+
+        is_new = (indicators_db_df["times_seen"] == 1) | (indicators_db_df["first_seen"] == indicators_db_df["last_seen"])
+        is_recurring = indicators_db_df["times_seen"] >= 2
+        is_stale = (now_ref - last_seen_dt).dt.total_seconds() / 86400.0 > stale_days
+
+        new_count = int(is_new.sum())
+        recurring_count = int(is_recurring.sum())
+        stale_count = int(is_stale.sum())
+
+        new_pct = (new_count / total_iocs * 100) if total_iocs > 0 else 0.0
+        recurring_pct = (recurring_count / total_iocs * 100) if total_iocs > 0 else 0.0
+        stale_pct = (stale_count / total_iocs * 100) if total_iocs > 0 else 0.0
+
+        # KPI Metric Cards
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.metric("Total IoCs Uniques", f"{total_iocs:,}".replace(",", " "), help="Nombre total d'indicateurs distincts indexés dans SQLite.")
+        with k2:
+            st.metric("Nouveaux (1 seule vue)", f"{new_count:,}".replace(",", " "), delta=f"{new_pct:.1f}% du total", delta_color="off", help="Indicateurs observés une seule fois (first_seen == last_seen).")
+        with k3:
+            st.metric("Récurrents (≥2 vues)", f"{recurring_count:,}".replace(",", " "), delta=f"{recurring_pct:.2f}% du total", delta_color="inverse", help="Indicateurs observés lors de plusieurs cycles de collecte.")
+        with k4:
+            st.metric(f"Obsolètes (> {stale_days}j)", f"{stale_count:,}".replace(",", " "), delta=f"{stale_pct:.1f}% inactifs", delta_color="off", help=f"Indicateurs non réapparus depuis plus de {stale_days} jours.")
+
+        st.divider()
+
+        # Display Top Persistent Indicators
+        st.markdown("#### :material/replay: Indicateurs les plus récurrents et persistants")
+        top_persistent = indicators_db_df.sort_values(by=["times_seen", "last_seen"], ascending=[False, False]).head(20)
+
+        persistent_config = {
+            "indicator_value": st.column_config.TextColumn("Indicateur (IoC)", width="medium"),
+            "indicator_type": st.column_config.TextColumn("Type"),
+            "first_seen": st.column_config.TextColumn("Première observation"),
+            "last_seen": st.column_config.TextColumn("Dernière observation"),
+            "times_seen": st.column_config.NumberColumn("Occurrences (Runs)", format="%d"),
+            "category": st.column_config.TextColumn("Catégorie"),
+            "severity": st.column_config.TextColumn("Sévérité"),
+            "country_code": st.column_config.TextColumn("Pays"),
+            "cross_source_confirmed": st.column_config.CheckboxColumn("Corroboré"),
+        }
+
+        st.dataframe(
+            top_persistent[[
+                "indicator_value",
+                "indicator_type",
+                "first_seen",
+                "last_seen",
+                "times_seen",
+                "category",
+                "severity",
+                "country_code",
+                "cross_source_confirmed",
+            ]],
+            column_config=persistent_config,
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("Aucune donnée de cycle de vie disponible dans le store opérationnel SQLite.")

@@ -1,0 +1,29 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Git & IDE configs
+.git/
+.github/
+.vscode/
+.idea/
+
+# Environment files with secrets
+.env
+.env.local
+.streamlit/secrets.toml
+
+# Documentation & temporary artifacts
+work official document mission/
+explaining/
+repomix-output.*
+tree.txt
+test_output.txt
+*.sqlite3-journal
