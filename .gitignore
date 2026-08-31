@@ -23,8 +23,12 @@ secrets.toml
 
 # Project-specific private/custom files
 work official document mission/
+important email/
 PROJECT_CONTEXT.txt
 /explaining/
+.pytest_cache/
+.coverage
+htmlcov/
 
 
 # IDE & OS settings
@@ -43,5 +47,23 @@ test_output.txt
 test_results_pytest.xml
 test_results_pytest.json
 *.html
+
+# PFA Report & Conversations
+pfa_rapport_cmrpi/
+conversation_export.md
+FACTS.md
+git_and_tests_verification.txt
+guide_bonnes_pratiques_*.txt
+important_email_extracted.txt
+pfa_context_and_synthesis.txt
+
+# Report Generation & Screenshot scripts
+scripts/capture_dashboard_screenshots.py
+scripts/capture_screenshots.js
+scripts/generate_arabic_abstract.py
+scripts/generate_architecture_diagram.py
+scripts/generate_report_figures.py
+scripts/render_arabic_abstract.py
+*plusieurs jours*
 
 

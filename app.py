@@ -6,6 +6,7 @@ Streamlit application for threat intelligence visualization and SME monitoring.
 import base64
 from datetime import date
 from pathlib import Path
+import altair as alt
 import pandas as pd
 import streamlit as st
 

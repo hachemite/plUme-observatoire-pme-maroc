@@ -84,5 +84,12 @@ date,category,count
 2026-08-23,ransomware_malware,273
 2026-08-24,ransomware_malware,387
 2026-08-25,ransomware_malware,360
-2026-08-26,ddos_extortion,100
-2026-08-26,ransomware_malware,17
+2026-08-26,ddos_extortion,102
+2026-08-26,ransomware_malware,451
+2026-08-27,ransomware_malware,449
+2026-08-27,web_attack,1
+2026-08-28,ddos_extortion,4
+2026-08-28,ransomware_malware,418
+2026-08-29,ransomware_malware,359
+2026-08-30,ddos_extortion,100
+2026-08-30,ransomware_malware,27

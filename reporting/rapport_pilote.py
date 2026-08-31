@@ -66,6 +66,19 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     max_date = valid_dates.max()
     days_covered = (max_date - min_date).days + 1 if not valid_dates.empty else 0
 
+    months_fr = {
+        1: "janvier", 2: "février", 3: "mars", 4: "avril", 5: "mai", 6: "juin",
+        7: "juillet", 8: "août", 9: "septembre", 10: "octobre", 11: "novembre", 12: "décembre"
+    }
+    if not valid_dates.empty:
+        min_date_fr = f"{min_date.day} {months_fr.get(min_date.month, '')} {min_date.year}"
+        max_date_fr = f"{max_date.day} {months_fr.get(max_date.month, '')} {max_date.year}"
+        min_date_num = min_date.strftime("%d/%m/%Y")
+        max_date_num = max_date.strftime("%d/%m/%Y")
+    else:
+        min_date_fr, max_date_fr = "N/A", "N/A"
+        min_date_num, max_date_num = "N/A", "N/A"
+
     # 3. Weekly volume trend using compute_daily_stats / resample
     daily_stats_df = compute_daily_stats(df)
     
@@ -195,12 +208,12 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     # 1. Header
     md.append("# Observatoire PME — Cybermenaces : Rapport Pilote")
     md.append(f"**Date de génération** : {date_str}  ")
-    md.append(f"**Période couverte** : 27 juin 2026 → 18 août 2026 ({days_covered} jours)\n")
+    md.append(f"**Période couverte** : {min_date_fr} → {max_date_fr} ({days_covered} jours)\n")
 
     # 2. Résumé
     md.append("## 1. Résumé")
     md.append(f"- Total événements : {total_events_str}")
-    md.append(f"- Période couverte : 27/06/2026 → 18/08/2026 ({days_covered} jours)")
+    md.append(f"- Période couverte : {min_date_num} → {max_date_num} ({days_covered} jours)")
     md.append(f"- Source principale : urlhaus ({urlhaus_pct:.2f}%)")
     md.append(f"- Catégorie principale : ransomware_malware ({malware_pct:.2f}%)")
     md.append("- Tendance globale : hausse (+22.65% sur les 7 semaines complètes)\n")
@@ -319,7 +332,7 @@ def generate_pilot_report(output_path: Optional[Path] = None) -> Path:
     # 10. Méthodologie et limites
     md.append("## 8. Méthodologie et limites")
     md.append("- **Sources** : 2 sources (URLhaus, AbuseIPDB).")
-    md.append(f"- **Fenêtre temporelle** : {days_covered} jours (du 27/06/2026 au 18/08/2026).")
+    md.append(f"- **Fenêtre temporelle** : {days_covered} jours (du {min_date_num} au {max_date_num}).")
     md.append("- **Qualité de collecte** : 0 ligne avec date invalide (qualité de collecte confirmée).")
     md.append("- **Limites sectorielles** : Champ sector_hint non exploitable (99.78% unknown).")
     md.append("- **Sévérité** : Niveau 'critical' absent du jeu de données actuel.")
