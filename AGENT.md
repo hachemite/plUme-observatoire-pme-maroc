@@ -99,7 +99,9 @@ Ask the user rather than assuming — especially before adding anything outside 
 - Run collector: `python collectors/urlhaus.py`
 - Run daily collection pipeline: `python scripts/run_daily_collection.py`
 - Run stats computation: `python analytics/stats.py`
-- Tests : pytest existe et tourne (`python -m pytest -v`), 13 tests passent actuellement.
+- Run Streamlit dashboard: `streamlit run app.py`
+- Generate pilot report: `python reporting/rapport_pilote.py`
+- Tests : pytest existe et tourne (`python -m pytest -v`), 14 tests passent actuellement.
 
 ## Commit & Change Logging Standard
 Every change — whether a small fix, bug patch, new feature, or refactor — must be committed with a detailed description, not a vague one-liner.
@@ -166,4 +168,8 @@ Ensure the bullet-point breakdown contains enough context for an AI agent or dev
   you want to discard everything after that point.
 
 ## Current focus
-Jalon 2 terminé et vérifié (`scripts/run_daily_collection.py`, `analytics/stats.py`, `tests/test_stats.py`, correction du bug de parsing de dates à fuseaux horaires mixtes), prêt à être envoyé. Jalon 3 pas commencé.
+Jalon 3 terminé et vérifié :
+- Application dashboard Streamlit opérationnelle (`app.py`, design tokens `theme_tokens.py`, assets anti-aliasés).
+- Module de reporting automatique fonctionnel et testé (`reporting/rapport_pilote.py`, `tests/test_reporting.py`).
+- Suite de tests unitaire complète à 100% de réussite (14/14 tests passés sous `pytest`).
+- Documentation bilingue à jour (`README.md`).

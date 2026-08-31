@@ -1,0 +1,131 @@
+[server]
+enableStaticServing = true
+
+[theme]
+base = "dark"
+primaryColor = "#db7c26"              # ochre — buttons, active states, links
+backgroundColor = "#121212"           # onyx — main content area
+secondaryBackgroundColor = "#2a2a2a"  # graphite — sidebar, widget backgrounds
+textColor = "#ffffff"                 # white
+borderColor = "#a0a0a0"               # cool-steel
+codeBackgroundColor = "#2a2a2a"
+linkColor = "#db7c26"
+showWidgetBorder = true
+baseRadius = "0.75rem"                # matches the rounded card look in your reference
+buttonRadius = "full"                 # pill buttons, matches your reference's Popover/Dialog style
+font = "Poppins"
+headingFontWeights = [600, 500, 500, 500, 500, 500]
+chartCategoricalColors = ["#db7c26", "#a0a0a0", "#2a2a2a", "#ffffff"]
+
+[theme.sidebar]
+backgroundColor = "#000000"
+secondaryBackgroundColor = "#2a2a2a"
+borderColor = "#696969"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Thin.ttf"
+weight = 100
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-ThinItalic.ttf"
+weight = 100
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-ExtraLight.ttf"
+weight = 200
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-ExtraLightItalic.ttf"
+weight = 200
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Light.ttf"
+weight = 300
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-LightItalic.ttf"
+weight = 300
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Regular.ttf"
+weight = 400
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Italic.ttf"
+weight = 400
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Medium.ttf"
+weight = 500
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-MediumItalic.ttf"
+weight = 500
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-SemiBold.ttf"
+weight = 600
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-SemiBoldItalic.ttf"
+weight = 600
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Bold.ttf"
+weight = 700
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-BoldItalic.ttf"
+weight = 700
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-ExtraBold.ttf"
+weight = 800
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-ExtraBoldItalic.ttf"
+weight = 800
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-Black.ttf"
+weight = 900
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Poppins"
+url = "app/static/Poppins-BlackItalic.ttf"
+weight = 900
+style = "italic"

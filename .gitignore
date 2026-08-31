@@ -14,6 +14,8 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+.streamlit/secrets.toml
+secrets.toml
 
 
 # Project-specific private/custom files
