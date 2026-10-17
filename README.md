@@ -1,313 +1,314 @@
-# Plume — Observatoire des Cybermenaces pour PME Marocaines / Moroccan SME CTI Observatory
+<p align="center">
+  <img src="assets/logo.png" alt="Plume logo" width="150">
+</p>
 
-> *"Voir le signal avant l'éruption."* / *"See the signal before the eruption."*
+<h1 align="center">Plume</h1>
 
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![CI Tests](https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml/badge.svg)](https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml)
-[![Tests](https://img.shields.io/badge/tests-14%20passed-brightgreen.svg)](#6-exécution-des-tests-unitaires--running-tests)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+<p align="center">
+  <strong>Observatoire data-driven des cybermenaces visant les PME marocaines</strong><br>
+  Moroccan SME Cyber Threat Intelligence Observatory
+</p>
 
----
+<p align="center">
+  <a href="https://plume-observatoire-pme-maroc-pvficuynff6xbxltobwrza.streamlit.app/"><strong>Ouvrir le dashboard live</strong></a>
+  ·
+  <a href="https://github.com/hachemite/plUme-observatoire-pme-maroc">Dépôt GitHub</a>
+  ·
+  <a href="docs/jalon_actualisation_report.md">Rapport d'actualisation</a>
+</p>
 
-## 🌐 Navigation
-- 🇫🇷 [Français](#-français)
-  - [1. Présentation du Projet](#1-présentation-du-projet)
-  - [2. Architecture & Structure](#2-architecture--structure-du-projet)
-  - [3. Installation & Configuration](#3-installation--configuration)
-  - [4. Lancement du Dashboard (Streamlit)](#4-lancement-du-dashboard-interactif-streamlit)
-  - [5. Exécution des Pipelines & Rapports](#5-exécution-des-collecteurs-pipelines--rapports)
-  - [6. Exécution des Tests](#6-exécution-des-tests-unitaires)
-- 🇬🇧 [English](#-english)
-  - [1. Project Overview](#1-project-overview)
-  - [2. Architecture & Structure](#2-architecture--project-structure)
-  - [3. Setup & Installation](#3-setup--installation)
-  - [4. Launching the Dashboard (Streamlit)](#4-launching-the-interactive-dashboard-streamlit)
-  - [5. Running Pipelines & Reports](#5-running-collectors-pipelines--reports)
-  - [6. Running Tests](#6-running-unit-tests)
-- 📊 [Qualité des Données / Data Metrics](#-qualité-des-données--data-quality-metrics)
+<p align="center">
+  <img src="https://img.shields.io/badge/release-v2.0--prod-db7c26" alt="Release v2.0 production">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB" alt="Python 3.10+">
+  <a href="https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml"><img src="https://github.com/hachemite/plUme-observatoire-pme-maroc/actions/workflows/test.yml/badge.svg" alt="CI tests"></a>
+  <img src="https://img.shields.io/badge/tests-41%20passed-brightgreen" alt="41 tests passed">
+  <img src="https://img.shields.io/badge/license-MIT-2ea44f" alt="MIT license">
+</p>
 
----
+> **Voir le signal avant l'éruption.**
+> Plume transforme des flux publics de Cyber Threat Intelligence (CTI) en indicateurs,
+> tendances, priorités et rapports compréhensibles pour les PME marocaines.
 
-## 🇫🇷 Français
+## Dashboard public
 
-### 1. Présentation du Projet
-**Plume** est un observatoire data-driven des cybermenaces visant les PME marocaines, développé dans le cadre d'un stage PFA au **CMRPI / EMC** (Juillet–Août 2026).
+**Accès direct : [plume-observatoire-pme-maroc-pvficuynff6xbxltobwrza.streamlit.app](https://plume-observatoire-pme-maroc-pvficuynff6xbxltobwrza.streamlit.app/)**
 
-Le projet collecte périodiquement des indicateurs de menace (IoCs) depuis des flux publics (**URLhaus**, **AbuseIPDB**), les valide avec des schémas Pydantic stricts, les catégorise selon la taxonomie du guide **AUSIM / CMRPI** (*Phishing*, *Ransomware / Malware*, *Attaques Web*, *DDoS*), et persiste les événements dédupliqués dans une couche de stockage (`storage/repository.py`).
+Le dashboard Streamlit est déployé publiquement et alimenté par les données versionnées
+du dépôt. La collecte et la synchronisation sont planifiées quotidiennement à **06:00 UTC**
+(**07:00 au Maroc, UTC+1**) par GitHub Actions. Cette architecture permet au service de
+rester accessible en continu sans dépendre d'une machine locale, sous réserve de la
+disponibilité de Streamlit Community Cloud et de GitHub Actions. Elle ne constitue pas
+une garantie contractuelle de disponibilité ni un système de détection temps réel.
 
-### 2. Architecture & Structure du Projet
+Le dashboard propose notamment :
+
+- des KPI exécutifs sur le volume, la sévérité, les sources et la période couverte ;
+- des filtres par date, catégorie, statut, source et niveau de sévérité ;
+- une taxonomie contextualisée PME : phishing, ransomware/malware, attaques web et DDoS ;
+- des tendances temporelles et une détection statistique d'anomalies ;
+- un score de risque composite et une priorisation des indicateurs ;
+- des enrichissements GeoIP/ASN et un focus sur les infrastructures marocaines ;
+- une analyse de cycle de vie des IoC : première observation, récurrence et obsolescence ;
+- l'export CSV des résultats filtrés.
+
+## 1. Objectif et périmètre
+
+Plume est un **observatoire analytique CTI**, développé dans le cadre du stage PFA 2026
+au **CMRPI / Espace Maroc Cyberconfiance (EMC)**. Il agrège des signaux publics,
+les normalise, les valide, les enrichit et les restitue sous forme de statistiques et
+de rapports.
+
+### Ce que Plume apporte
+
+1. **Corrélation multi-sources** entre URLhaus, AbuseIPDB et les enrichissements
+   disponibles.
+2. **Contextualisation marocaine** par taxonomie AUSIM/CMRPI, secteurs ciblés et
+   attribution GeoIP/ASN.
+3. **Historique exploitable** pour mesurer les tendances et la récurrence des IoC.
+4. **Priorisation pour les non-experts** grâce à la sévérité, aux anomalies et au
+   score de risque.
+5. **Traçabilité d'exploitation** avec historique des collectes, stockage SQLite et
+   rapports Markdown automatisés.
+
+### Limites importantes
+
+Plume n'est ni un SOC, ni un EDR, ni un système de surveillance réseau temps réel.
+Les flux sont publics et leur couverture dépend de leurs fournisseurs. Les résultats
+doivent être interprétés comme des signaux CTI destinés à l'analyse et à la
+priorisation, pas comme une preuve autonome de compromission.
+
+## 2. État de la release
+
+La base de production documentée dans le rapport d'actualisation correspond à la
+release **v2.0-Prod** (jalon alt 8), consolidant :
+
+| Domaine | Livraison |
+| --- | --- |
+| Ingestion | Collecteurs URLhaus et AbuseIPDB, validation et déduplication |
+| Traitement | Schémas Pydantic, taxonomie AUSIM/CMRPI et enrichissement des événements |
+| Analytics | Statistiques, anomalies Z-score, corrélation, score de risque et ML |
+| Géographie | Résolution GeoIP hors ligne et attribution ASN |
+| Persistance | CSV historique et store SQLite (`indicators`, `collection_runs`, `events`) |
+| Exploitation | Dashboard Streamlit, rapports CTI et export CSV |
+| Automatisation | CI de tests et collecte quotidienne GitHub Actions |
+| Déploiement | Image Docker `python:3.11-slim` avec healthcheck Streamlit |
+| Qualité | **41/41 tests Pytest passés** |
+
+### Indicateurs du dataset actuellement versionné
+
+Ces chiffres sont une photographie du fichier `data/threat_events.csv` au
+**16 octobre 2026** ; ils évolueront avec les collectes quotidiennes.
+
+| Indicateur | Valeur |
+| --- | ---: |
+| Événements | **74 206** |
+| Période couverte | **27/06/2026 – 16/10/2026** |
+| URLhaus | **73 302** |
+| AbuseIPDB | **904** |
+| Ransomware / malware | **73 064** |
+| DDoS / extorsion | **1 089** |
+| Attaques web | **42** |
+| Phishing | **11** |
+
+Les métriques détaillées et les résultats scientifiques sont conservés dans
+[`docs/jalon_actualisation_report.md`](docs/jalon_actualisation_report.md).
+
+## 3. Architecture
+
 ```text
-observatoire-pme-maroc/
-├── collectors/          # Ingestion des flux cyber (urlhaus.py, abuseipdb.py)
-├── processing/          # Validation Pydantic (validate.py) & Taxonomie (taxonomy.py)
-├── storage/             # Couche d'abstraction repository (repository.py)
-├── analytics/           # Statistiques & agrégations (stats.py)
-├── reporting/           # Générateur de rapports CTI (rapport_pilote.py)
-├── reports/             # Rapports générés en Markdown
-├── notebooks/           # Notebooks d'exploration & scripts (notebookv1.py)
-├── scripts/             # Orchestration & utilitaires (run_daily_collection.py, build_notebook.py)
-├── tests/               # Tests unitaires Pytest (test_reporting, test_repository, test_taxonomy, etc.)
-├── data/                # Données persistées (threat_events.csv, daily_stats.csv)
-├── app.py               # Dashboard interactif Streamlit
-└── requirements.txt     # Dépendances Python
+Sources publiques
+  URLhaus + AbuseIPDB
+          │
+          ▼
+collectors/          ingestion et normalisation
+          │
+          ▼
+processing/          validation Pydantic + taxonomie
+          │
+          ├──► storage/       CSV + SQLite + cycle de vie des IoC
+          ├──► analytics/     statistiques, anomalies, risque, GeoIP, ML
+          └──► reporting/     rapports CTI Markdown
+                              │
+                              ▼
+                         app.py / Streamlit
 ```
 
-### 3. Installation & Configuration
+| Répertoire | Responsabilité |
+| --- | --- |
+| [`collectors/`](collectors/) | Collecte URLhaus, AbuseIPDB, PhishTank, NVD et DGSSI |
+| [`processing/`](processing/) | Validation, normalisation et classification taxonomique |
+| [`storage/`](storage/) | Persistance, déduplication et suivi du cycle de vie |
+| [`analytics/`](analytics/) | Statistiques, anomalies, corrélation, risque, GeoIP et ML |
+| [`reporting/`](reporting/) | Génération des rapports et recommandations |
+| [`data/`](data/) | Dataset historique et statistiques quotidiennes |
+| [`scripts/`](scripts/) | Migration, orchestration et utilitaires |
+| [`tests/`](tests/) | Suite Pytest couvrant les composants critiques |
+| [`app.py`](app.py) | Interface interactive Streamlit |
+| [`.github/workflows/`](.github/workflows/) | Tests CI et collecte quotidienne |
 
-#### Prérequis
-- **Python 3.10+**
-- **Git**
+## 4. Installation locale
 
-#### Étapes d'installation
+### Prérequis
+
+- Python **3.10 ou supérieur** ;
+- Git ;
+- Docker (optionnel) ;
+- une clé AbuseIPDB uniquement pour activer cette source avec authentification.
+
+### Windows PowerShell
+
+```powershell
+git clone https://github.com/hachemite/plUme-observatoire-pme-maroc.git
+Set-Location observatoire-pme-maroc
+
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+# Configuration optionnelle
+Copy-Item .env.example .env
+# Éditer .env et renseigner ABUSEIPDB_API_KEY si nécessaire
+```
+
+### Linux / macOS
+
 ```bash
-# 1. Cloner le dépôt
 git clone https://github.com/hachemite/plUme-observatoire-pme-maroc.git
 cd observatoire-pme-maroc
 
-# 2. Créer et activer l'environnement virtuel
-python -m venv venv
-
-# Sur Windows (PowerShell) :
-.\venv\Scripts\activate.ps1
-
-# Sur Linux / macOS :
-source venv/bin/activate
-
-# 3. Installer les dépendances
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-
-# 4. Configurer les variables d'environnement (Optionnel pour AbuseIPDB)
-cp .env.example .env
-# Éditer le fichier .env si vous disposez d'une clé API AbuseIPDB
-```
-
-### 4. Lancement du Dashboard Interactif (Streamlit)
-
-Pour explorer visuellement les indicateurs de menace, les ventilations taxonomiques et les alertes PME :
-
-```bash
-# Lancer l'application Streamlit localement
-streamlit run app.py
-```
-
-L'application s'ouvrira automatiquement dans votre navigateur à l'adresse **`http://localhost:8501`**.
-
-#### 🐳 Déploiement Conteneurisé (Docker)
-Pour exécuter l'application en conteneur en une seule commande :
-```bash
-docker build -t observatoire . && docker run -p 8501:8501 observatoire
-```
-
-**Fonctionnalités du Dashboard :**
-- 📈 **KPIs globaux** : Volume d'événements, IoCs critiques, répartition par source et dates couvertes.
-- 🎯 **Filtres interactifs** : Période temporelle, catégories de menaces, niveaux de sévérité et sources.
-- 🇲🇦 **Focus PME Marocaines** : Détection des ciblages sectoriels (Bancaire, Gouvernemental `.gov.ma`, E-commerce).
-- 📊 **Visualisations dynamiques** : Évolution temporelle, répartition taxonomique, et tags fréquents.
-- 📥 **Export des données** : Téléchargement direct des événements filtrés au format CSV.
-
----
-
-### 5. Exécution des Collecteurs, Pipelines & Rapports
-
-#### Collecte quotidienne automatisée
-```bash
-# Lancer le pipeline complet quotidien (URLhaus + AbuseIPDB + calcul des statistiques)
-python scripts/run_daily_collection.py
-```
-> **Note** : Ce script orchestre l'exécution successive de `collectors/urlhaus.py` et `collectors/abuseipdb.py` en sous-processus isolés, puis déclenche automatiquement l'agrégation statistique dans `data/daily_stats.csv` via `analytics/stats.py`.
-
-#### Automatisation sous Windows (Planificateur de tâches / Task Scheduler)
-Pour planifier l'exécution quotidienne automatique chaque matin à 09:00 :
-```powershell
-schtasks /create /tn "PlumeDailyCollection" /tr "\"$(Get-Command python).Source\" \"C:\chemin\vers\repo\scripts\run_daily_collection.py\"" /sc daily /st 09:00
-```
-*(Note : adapter le chemin absolu vers votre dépôt local).*
-
-#### Génération de rapports CTI (Markdown)
-```bash
-# Générer le rapport pilote Markdown basé sur les données actuelles
-python reporting/rapport_pilote.py
-```
-*(Le rapport sera automatiquement sauvegardé dans le dossier `reports/rapport_pilote_YYYY-MM-DD.md`).*
-
-#### Exécutions individuelles & utilitaires
-```bash
-# Exécuter le collecteur URLhaus seul (Flux principal)
-python collectors/urlhaus.py
-
-# Exécuter le collecteur AbuseIPDB seul (Flux secondaire)
-python collectors/abuseipdb.py
-
-# Recalculer les statistiques quotidiennes seules
-python analytics/stats.py
-
-# Générer le notebook d'exploration
-python scripts/build_notebook.py
-```
-
----
-
-### 6. Exécution des Tests Unitaires
-
-Le projet utilise **pytest** pour garantir la fiabilité des composants de validation, de taxonomie, de stockage, de reporting et d'agrégation statistique.
-
-```bash
-# Lancer tous les tests unitaires en mode verbeux (14 tests)
-python -m pytest -v
-
-# Lancer un fichier de test spécifique
-python -m pytest tests/test_reporting.py -v
-python -m pytest tests/test_repository.py -v
-python -m pytest tests/test_taxonomy.py -v
-python -m pytest tests/test_validate.py -v
-python -m pytest tests/test_stats.py -v
-```
-
----
-
-## 🇬🇧 English
-
-### 1. Project Overview
-**Plume** is a data-driven Cyber Threat Intelligence (CTI) observatory focused on Moroccan SMEs, developed during a PFA internship at **CMRPI / EMC** (Summer 2026).
-
-The project periodically ingests threat indicators (IoCs) from public threat feeds (**URLhaus**, **AbuseIPDB**), validates them with strict Pydantic schemas, categorizes them against the **AUSIM / CMRPI** taxonomy (*Phishing*, *Ransomware / Malware*, *Web Attacks*, *DDoS*), and persists deduplicated threat events via a repository abstraction layer (`storage/repository.py`).
-
-### 2. Architecture & Project Structure
-- **`collectors/`**: Data ingestion modules (`urlhaus.py`, `abuseipdb.py`).
-- **`processing/`**: Data validation (`validate.py`) and taxonomy enrichment (`taxonomy.py`).
-- **`storage/`**: Load-bearing repository abstraction (`repository.py`) managing CSV read/write and deduplication.
-- **`analytics/`**: Aggregations and statistical metrics (`stats.py`).
-- **`reporting/`**: Sectoral intelligence report generator (`rapport_pilote.py`).
-- **`reports/`**: Generated Markdown reports.
-- **`scripts/`**: Orchestration and utility scripts (`run_daily_collection.py`, `build_notebook.py`).
-- **`data/`**: Ingested threat events and daily statistics (`threat_events.csv`, `daily_stats.csv`).
-- **`tests/`**: Unit test suite powered by `pytest`.
-- **`app.py`**: Interactive Streamlit dashboard.
-- **`requirements.txt`**: Python dependencies.
-
-### 3. Setup & Installation
-
-#### Prerequisites
-- **Python 3.10+**
-- **Git**
-
-#### Setup Steps
-```bash
-# 1. Clone repository
-git clone https://github.com/hachemite/plUme-observatoire-pme-maroc.git
-cd observatoire-pme-maroc
-
-# 2. Create and activate virtual environment
-python -m venv venv
-
-# On Windows (PowerShell):
-.\venv\Scripts\activate.ps1
-
-# On Linux / macOS:
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Set up environment configuration (Optional for AbuseIPDB)
 cp .env.example .env
 ```
 
-### 4. Launching the Interactive Dashboard (Streamlit)
+Ne versionnez jamais `.env` ni une clé API. Le fichier `.env` est explicitement ignoré
+par Git.
 
-To launch the web interface and explore cyber threat telemetry:
+## 5. Lancer le dashboard
 
 ```bash
-# Launch Streamlit dashboard locally
 streamlit run app.py
 ```
 
-Access the dashboard at **`http://localhost:8501`**.
+Ouvrir ensuite [http://localhost:8501](http://localhost:8501). Le contrôle de santé
+du conteneur est disponible à `http://localhost:8501/_stcore/health`.
 
-#### 🐳 Containerized Deployment (Docker)
-To build and run the application in an isolated container in a single command:
+### Docker
+
 ```bash
-docker build -t observatoire . && docker run -p 8501:8501 observatoire
+docker build -t plume-observatoire .
+docker run --rm -p 8501:8501 plume-observatoire
 ```
 
-**Dashboard Features:**
-- 📈 **Executive KPIs**: Real-time total events, critical IoCs, data completeness, and source splits.
-- 🎯 **Multi-criteria Filtering**: Filter by date range, taxonomy category, severity level, and data feed.
-- 🇲🇦 **Moroccan SME Intelligence**: Automated identification of targets (.gov.ma, Moroccan banking, local e-commerce).
-- 📊 **Dynamic Visualizations**: Temporal timeline, categorical breakdowns, and top indicator tags.
-- 📥 **Data Export**: Filter and export datasets directly to CSV.
+Le `Dockerfile` utilise une image Python slim, expose le port `8501` et inclut un
+healthcheck adapté à un déploiement conteneurisé.
 
----
+## 6. Collecte, stockage et rapports
 
-### 5. Running Collectors, Pipelines & Reports
+### Exécution du pipeline quotidien
 
-#### Daily automated collection
 ```bash
-# Run full daily pipeline (URLhaus + AbuseIPDB + automated statistical aggregation)
-python scripts/run_daily_collection.py
+python run_daily_collection.py
 ```
-> **Note**: This orchestrator runs `collectors/urlhaus.py` and `collectors/abuseipdb.py` as isolated subprocesses, then automatically triggers `analytics/stats.py` to refresh `data/daily_stats.csv`.
 
-#### Windows Task Scheduler Automation
-To schedule an automated daily run at 09:00:
-```powershell
-schtasks /create /tn "PlumeDailyCollection" /tr "\"$(Get-Command python).Source\" \"C:\path\to\repo\scripts\run_daily_collection.py\"" /sc daily /st 09:00
-```
-*(Note: adjust the absolute path to match your local repository).*
+Le pipeline collecte les sources configurées, valide les événements, met à jour le
+dataset historique et les statistiques quotidiennes. En production, le workflow
+[`collect.yml`](.github/workflows/collect.yml) l'exécute automatiquement chaque jour.
+Un lancement manuel est également disponible dans l'onglet **Actions** de GitHub.
 
-#### Generating CTI Intelligence Reports (Markdown)
+### Commandes utiles
+
 ```bash
-# Generate the automated pilot report in Markdown
-python reporting/rapport_pilote.py
-```
-*(Saved to `reports/rapport_pilote_YYYY-MM-DD.md`).*
-
-#### Standalone & utility executions
-```bash
-# Execute URLhaus collector standalone (Primary feed)
-python collectors/urlhaus.py
-
-# Execute AbuseIPDB collector standalone (Secondary feed)
-python collectors/abuseipdb.py
-
-# Recompute daily aggregated statistics standalone
+# Recalculer les statistiques
 python analytics/stats.py
 
-# Generate exploratory notebook script
-python scripts/build_notebook.py
+# Générer un rapport CTI Markdown
+python reporting/rapport_pilote.py
+
+# Migrer ou reconstruire le store SQLite depuis l'historique CSV
+python scripts/migrate_csv_to_sqlite.py
 ```
 
----
+### Configuration AbuseIPDB
 
-### 6. Running Unit Tests
+```dotenv
+ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
+```
 
-The test suite ensures data validation, taxonomy mapping, repository storage, reporting, and statistical aggregation integrity.
+URLhaus reste exploitable sans clé. Si AbuseIPDB n'est pas configuré, le pipeline
+doit conserver un comportement explicite et documenté en mode dégradé.
+
+## 7. Tests et qualité
+
+La suite vérifie la validation des données, la taxonomie, les repositories CSV/SQLite,
+les statistiques, les recommandations, la corrélation, le risque, GeoIP, le
+classifieur et le reporting.
 
 ```bash
-# Run all unit tests (14 tests)
+# Suite complète
 python -m pytest -v
 
-# Run specific test modules
-python -m pytest tests/test_reporting.py -v
-python -m pytest tests/test_repository.py -v
-python -m pytest tests/test_taxonomy.py -v
-python -m pytest tests/test_validate.py -v
-python -m pytest tests/test_stats.py -v
+# Sous-ensemble du stockage et de la validation
+python -m pytest tests/test_validate.py tests/test_repository.py tests/test_repository_sqlite.py -v
+
+# Compilation syntaxique
+python -m compileall -q app.py analytics collectors processing reporting scripts tests
 ```
 
----
+La CI teste Python **3.10, 3.11 et 3.12** sur chaque push et pull request.
 
-## 📊 Qualité des Données / Data Quality Metrics
+## 8. Exploitation “toujours disponible”
 
-| Métrique / Metric | Valeur / Value | Description |
-| :--- | :--- | :--- |
-| **Événements collectés** | 26,793 | Total des événements validés et dédupliqués dans `data/threat_events.csv`. |
-| **Complétude du schéma core** | 100% | 9 champs obligatoires (`event_id`, `source`, `date_added`, `indicator_type`, `indicator_value`, `raw_threat_tag`, `status`, `category`, `severity`). |
-| **Champ `tags`** | 90.62% | Renseigné pour 24,279 événements (absent pour 2,514 enregistrements URLhaus sans étiquette d'origine). |
-| **Géolocalisation (`country_code`)** | 1.87% | Renseigné pour 500 événements (fourni par AbuseIPDB uniquement). |
-| **Inférence sectorielle (`sector_hint`)** | 0.24% | Renseigné pour 63 événements identifiant un secteur cible spécifique (`banking`, `.gov.ma`, `ecommerce`). |
+Pour maintenir le service dans un état opérationnel :
 
----
+1. conserver le déploiement Streamlit Cloud relié à `main` ;
+2. laisser le workflow de collecte planifié actif ;
+3. vérifier le badge CI avant chaque publication ;
+4. surveiller les exécutions GitHub Actions et les commits de données ;
+5. tester périodiquement `/_stcore/health` et ouvrir le dashboard public ;
+6. ne jamais stocker de secret dans le dépôt ou dans les fichiers de données.
 
-## 📜 Licence & Crédits
-Développé dans le cadre du stage PFA au **CMRPI / EMC** (2026).
+La disponibilité réelle reste dépendante des quotas, mises en veille éventuelles et
+incidents de la plateforme Streamlit Community Cloud. Pour une garantie 24/7 stricte,
+déployer la même image Docker sur une plateforme avec SLA et supervision explicite.
+
+## 9. Publication et packaging
+
+Plume est une **application de données déployable**, pas une bibliothèque Python :
+un package PyPI n'apporterait donc pas de valeur à ce stade. Le livrable publiable
+est constitué de l'application Streamlit, du dataset versionné, du workflow CI/CD et
+de l'image Docker reproductible.
+
+Avant une publication :
+
+```bash
+python -m pytest -q
+docker build -t plume-observatoire:release .
+docker run --rm -d --name plume-check -p 8501:8501 plume-observatoire:release
+curl http://localhost:8501/_stcore/health
+docker stop plume-check
+```
+
+Pour une release Git, créer un tag annoté uniquement après validation CI :
+
+```bash
+git tag -a v2.0.0 -m "Plume v2.0 production baseline"
+git push origin v2.0.0
+```
+
+Le tag doit toujours correspondre à un commit validé et documenté. Les données
+continueront ensuite à évoluer via les commits quotidiens `[skip ci]`.
+
+## 10. Références et gouvernance
+
+- [Rapport global d'actualisation](docs/jalon_actualisation_report.md)
+- [Rapport de clôture du jalon 8](docs/jalon8_closeout_report.md)
+- [Politique de sécurité](SECURITY.md)
+- [Licence MIT](LICENSE)
+
+Développé dans le cadre du stage PFA 2026 au **CMRPI / EMC**, avec une approche
+orientée data engineering, reproductibilité et valorisation de la CTI pour les PME
+marocaines.

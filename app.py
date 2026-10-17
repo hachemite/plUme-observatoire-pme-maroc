@@ -71,6 +71,35 @@ def inject_theme_css():
             box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset,
                         0 2px 6px rgba(0,0,0,0.35);
         }
+        .plume-hero {
+            padding: 1.4rem 1.6rem 1.25rem 1.6rem;
+            border: 1px solid rgba(219,124,38,0.28);
+            border-radius: 0.9rem;
+            background: linear-gradient(120deg, rgba(219,124,38,0.16), rgba(42,42,42,0.55) 48%, rgba(18,18,18,0.8));
+            box-shadow: 0 8px 24px rgba(0,0,0,0.24);
+        }
+        .plume-hero h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: -0.03em;
+        }
+        .plume-hero p {
+            margin: 0.35rem 0 0 0;
+            color: rgba(255,255,255,0.72);
+        }
+        .plume-status {
+            display: inline-block;
+            margin-bottom: 0.75rem;
+            padding: 0.22rem 0.65rem;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 999px;
+            color: #fde8d4;
+            background: rgba(219,124,38,0.2);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -245,15 +274,35 @@ if search_query.strip():
 filtered_df = df_raw[filter_mask].copy()
 
 # 6. Main content brand header
-header_col1, header_col2 = st.columns([1, 14])
-with header_col1:
+coverage_label = (
+    f"{min_date.strftime('%d/%m/%Y')} — {max_date.strftime('%d/%m/%Y')}"
+    if isinstance(min_date, date) and isinstance(max_date, date)
+    else "Période non disponible"
+)
+source_label = " · ".join(str(source).upper() for source in available_sources) or "Aucune source"
+
+hero_col1, hero_col2 = st.columns([1, 11], vertical_alignment="center")
+with hero_col1:
     if (Path(__file__).parent / "assets" / "logo.png").exists():
-        st.image("assets/logo.png", width=56)
+        st.image("assets/logo.png", width=76)
     else:
         st.markdown("### :material/shield_person:")
-with header_col2:
-    st.markdown("## plUme")
-    st.caption("Observatoire de veille cyber pour les PME marocaines")
+with hero_col2:
+    st.markdown(
+        f"""
+        <div class="plume-hero">
+            <span class="plume-status">● Observatoire opérationnel</span>
+            <h1>Plume</h1>
+            <p>Veille analytique des cybermenaces visant les PME marocaines.</p>
+            <p><strong>{source_label}</strong> · {len(df_raw):,} événements · couverture {coverage_label}</p>
+        </div>
+        """.replace(",", " "),
+        unsafe_allow_html=True,
+    )
+st.caption(
+    "Données publiques normalisées et enrichies · collecte quotidienne · "
+    "les résultats sont des signaux CTI et ne remplacent pas une investigation de sécurité."
+)
 st.divider()
 
 # 7. KPI Metrics Row
