@@ -282,6 +282,36 @@ un package PyPI n'apporterait donc pas de valeur à ce stade. Le livrable publia
 est constitué de l'application Streamlit, du dataset versionné, du workflow CI/CD et
 de l'image Docker reproductible.
 
+### Release v2.0.0 — exemples d'utilisation
+
+La release `v2.0.0` fournit trois modes d'utilisation :
+
+**1. Dashboard public Streamlit**
+
+Ouvrir directement :
+
+<https://plume-observatoire-pme-maroc-pvficuynff6xbxltobwrza.streamlit.app/>
+
+**2. Exécution locale avec Streamlit**
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
+
+Puis ouvrir <http://localhost:8501>.
+
+**3. Exécution depuis le package Docker publié sur GHCR**
+
+```bash
+docker pull ghcr.io/hachemite/plume-observatoire-pme-maroc:v2.0.0
+docker run --rm -p 8501:8501 \
+  ghcr.io/hachemite/plume-observatoire-pme-maroc:v2.0.0
+```
+
+Puis ouvrir <http://localhost:8501>. Le conteneur expose également le contrôle de
+santé Streamlit à <http://localhost:8501/_stcore/health>.
+
 Avant une publication :
 
 ```bash
